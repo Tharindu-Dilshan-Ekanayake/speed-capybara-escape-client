@@ -134,33 +134,34 @@ function noise({ dur = 0.3, vol = 0.25, at = 0, type = 'lowpass', freq = 1200, e
   src.start(t)
 }
 
-/** A cartoon quack: buzzy source through two vowel formants with a falling pitch. */
-function quack(at = 0, pitch = 1, vol = 0.22) {
+/** A capybara "wheek": a soft whistle-chirp that rises then falls, with a little wobble. */
+function squeak(at = 0, pitch = 1, vol = 0.2) {
   if (!ctx) return
   const t = ctx.currentTime + at
-  const osc = ctx.createOscillator()
-  osc.type = 'sawtooth'
-  osc.frequency.setValueAtTime(330 * pitch, t)
-  osc.frequency.exponentialRampToValueAtTime(240 * pitch, t + 0.16)
   const g = ctx.createGain()
   g.gain.setValueAtTime(0.0001, t)
-  g.gain.exponentialRampToValueAtTime(vol, t + 0.015)
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.02)
+  g.gain.exponentialRampToValueAtTime(vol * 0.6, t + 0.1)
   g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2)
-  for (const [f, qv, gv] of [[1100, 6, 1], [2600, 8, 0.5]]) {
-    const bp = ctx.createBiquadFilter()
-    bp.type = 'bandpass'
-    bp.frequency.setValueAtTime(f, t)
-    bp.frequency.exponentialRampToValueAtTime(f * 0.75, t + 0.18)
-    bp.Q.value = qv
-    const fg = ctx.createGain()
-    fg.gain.value = gv * 2.2
-    osc.connect(bp)
-    bp.connect(fg)
-    fg.connect(g)
+  const bp = ctx.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.frequency.value = 1500 * pitch
+  bp.Q.value = 0.9
+  bp.connect(g)
+  for (const [type, mul, gain] of [['triangle', 1, 1], ['sine', 2, 0.35]]) {
+    const osc = ctx.createOscillator()
+    osc.type = type
+    osc.frequency.setValueAtTime(680 * pitch * mul, t)
+    osc.frequency.exponentialRampToValueAtTime(1150 * pitch * mul, t + 0.06)
+    osc.frequency.exponentialRampToValueAtTime(820 * pitch * mul, t + 0.18)
+    const og = ctx.createGain()
+    og.gain.value = gain
+    osc.connect(og)
+    og.connect(bp)
+    osc.start(t)
+    osc.stop(t + 0.24)
   }
   g.connect(sfxBus)
-  osc.start(t)
-  osc.stop(t + 0.25)
 }
 
 const chord = (notes, opts) => notes.forEach((f, i) => tone(f, { ...opts, at: (opts?.at || 0) + i * (opts?.spread || 0) }))
@@ -176,15 +177,15 @@ const SOUNDS = {
     tone(880, { dur: 0.07, type: 'triangle', vol: 0.14, wet: 0.1 })
     tone(590, { dur: 0.09, type: 'triangle', vol: 0.14, at: 0.05, wet: 0.1 })
   },
-  // A soft webbed-foot "pat": a muffled thump plus a tiny wet slap, alternating feet.
+  // A soft paw "pat": a muffled thump plus a tiny scuff, alternating feet.
   step: () => {
     stepFlip = !stepFlip
     tone(stepFlip ? 190 : 165, { dur: 0.07, type: 'sine', vol: 0.09, slide: -70, wet: 0 })
     noise({ dur: 0.045, vol: 0.05, type: 'bandpass', freq: stepFlip ? 1300 : 1100, q: 1.4 })
   },
-  // The duck quacks every time it jumps.
+  // The capybara chirps every time it jumps.
   jump: () => {
-    quack(0, 1.04 + Math.random() * 0.1, 0.2)
+    squeak(0, 1.04 + Math.random() * 0.1, 0.2)
     noise({ dur: 0.22, vol: 0.05, type: 'bandpass', freq: 500, endFreq: 1800, q: 1.2 })
   },
   land: () => {
@@ -195,14 +196,24 @@ const SOUNDS = {
     tone(260, { dur: 0.32, type: 'sine', vol: 0.24, slide: 900, vib: 30, wet: 0.2 })
     tone(520, { dur: 0.22, type: 'triangle', vol: 0.08, slide: 900, wet: 0.2 })
   },
-  quack: () => {
-    quack(0, 1)
-    quack(0.17, 1.08, 0.18)
+  squeak: () => {
+    squeak(0, 1)
+    squeak(0.15, 1.12, 0.18)
   },
   levelUp: () => {
     chord([523, 659, 784, 1047, 1319], { dur: 0.22, type: 'triangle', vol: 0.14, spread: 0.07 })
     tone(1568, { dur: 0.7, type: 'sine', vol: 0.16, at: 0.36, vib: 12 })
     noise({ dur: 0.5, vol: 0.05, at: 0.3, type: 'highpass', freq: 6000 })
+  },
+  // Wins rain: a shower of little "chings" over a bright fanfare.
+  coins: () => {
+    chord([523, 659, 784, 1047], { dur: 0.16, type: 'triangle', vol: 0.08, spread: 0.07 })
+    for (let i = 0; i < 26; i += 1) {
+      const f = 1800 + Math.random() * 1800
+      tone(f, { dur: 0.09, type: 'sine', vol: 0.05 + Math.random() * 0.04, at: 0.2 + i * 0.07 + Math.random() * 0.05, slide: -f * 0.15, wet: 0.3 })
+      tone(f * 1.5, { dur: 0.05, type: 'triangle', vol: 0.03, at: 0.2 + i * 0.07, wet: 0.2 })
+    }
+    noise({ dur: 1.8, vol: 0.04, at: 0.2, type: 'highpass', freq: 7000 })
   },
   win: () => {
     chord([523, 659, 784, 1047], { dur: 0.18, type: 'square', vol: 0.06, spread: 0.08 })
@@ -216,7 +227,7 @@ const SOUNDS = {
     noise({ dur: 0.18, vol: 0.05, at: 0.05, type: 'highpass', freq: 5000 })
   },
   equip: () => {
-    quack(0, 1.1, 0.18)
+    squeak(0, 1.1, 0.18)
     tone(1175, { dur: 0.25, type: 'sine', vol: 0.12, at: 0.12 })
   },
   boost: () => {
@@ -240,25 +251,25 @@ const SOUNDS = {
       const f = 380 + Math.random() * 520
       tone(f, { dur: 0.06 + Math.random() * 0.05, type: 'sine', vol: 0.07, slide: f * 0.9, at: 0.28 + i * 0.075 + Math.random() * 0.04, wet: 0.25 })
     }
-    quack(0.12, 0.82, 0.12)
+    squeak(0.12, 0.82, 0.12)
   },
   zap: () => {
     tone(1400, { dur: 0.3, type: 'sawtooth', vol: 0.09, slide: -1250, wet: 0.1 })
     noise({ dur: 0.25, vol: 0.08, type: 'highpass', freq: 3000 })
   },
-  // Falling into lava: a hot hiss with crackles and a startled quack.
+  // Falling into lava: a hot hiss with crackles and a startled squeak.
   burn: () => {
     noise({ dur: 1.3, vol: 0.2, type: 'highpass', freq: 3200 })
     noise({ dur: 0.9, vol: 0.16, type: 'bandpass', freq: 5200, endFreq: 1800, q: 0.9 })
     noise({ dur: 0.35, vol: 0.14, type: 'lowpass', freq: 600, endFreq: 150 })
     for (let i = 0; i < 14; i += 1) noise({ dur: 0.018, vol: 0.2 + Math.random() * 0.15, at: 0.05 + Math.random() * 1.0, type: 'highpass', freq: 1800 + Math.random() * 3000 })
-    quack(0, 1.45, 0.16)
-    quack(0.13, 1.6, 0.1)
+    squeak(0, 1.45, 0.16)
+    squeak(0.13, 1.6, 0.1)
   },
   bonk: () => {
     tone(240, { dur: 0.16, type: 'sine', vol: 0.26, slide: -150, wet: 0.1 })
     noise({ dur: 0.08, vol: 0.12, freq: 900 })
-    quack(0.1, 1.3, 0.12)
+    squeak(0.1, 1.3, 0.12)
   },
   fall: () => tone(700, { dur: 0.6, type: 'sine', vol: 0.12, slide: -560 }),
   wave: () => {

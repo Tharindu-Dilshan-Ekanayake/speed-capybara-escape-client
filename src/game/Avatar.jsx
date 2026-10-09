@@ -11,7 +11,7 @@ import { applyPart, applyProportions, applySkin, attachAccessory, collectRig, po
 
 /**
  * A player's Bloxity avatar, assembled at runtime from their equipped cosmetics, posed
- * to ride inside the duck. Used for the local player and for every remote player.
+ * to ride on the capybara. Used for the local player and for every remote player.
  *
  * player.glb is the base rig (six skinned meshes on one skeleton): body parts swap
  * mesh geometry, hats / back items attach to bones, the skin is one shared texture.
@@ -88,7 +88,7 @@ function BloxityAvatar({ equipped, proportions, motionRef, targetHeight = 1.75, 
   }, [assembled, onReady])
 
   const propsRef = useRef(proportions)
-  // Riders keep their normal proportions: the legs tuck into the duck's back (see poseRider).
+  // Riders keep their normal proportions: the legs tuck into the capybara's back (see poseRider).
   const base = proportions || DEFAULT_PROPORTIONS
   propsRef.current = base
   useFrame(() => {

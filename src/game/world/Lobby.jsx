@@ -8,125 +8,192 @@ import {
   CylinderGeometry,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  OctahedronGeometry,
   SphereGeometry,
   SRGBColorSpace,
-  TorusGeometry,
 } from 'three'
 
-import { LOBBIES } from '../../shared/course'
-import { DUCKS, TREADMILLS, WHEEL, WORLD2_REBIRTHS, formatNum } from '../../shared/gameData'
+import { LOBBY } from '../../shared/course'
+import { CAPYS, TREADMILLS, WHEEL, formatNum } from '../../shared/gameData'
 import { useGame } from '../../state/store'
-import Duck from '../Duck'
+import Capybara from '../Capybara'
 import { additiveMaterial, surfaceMaterial } from '../materials'
 import { FONT_TITLE, FONT_UI } from '../textures'
-import { Portal } from './Props'
 import { Label } from './Signs'
 
 const BOX = new BoxGeometry(1, 1, 1)
 const CYL = new CylinderGeometry(1, 1, 1, 24)
 const SPHERE = new SphereGeometry(1, 24, 16)
-const TORUS = new TorusGeometry(1, 0.05, 8, 40)
 const CONE = new ConeGeometry(1, 1, 12)
+const GEM = new OctahedronGeometry(1, 0)
 const WHEEL_DISC = new CircleGeometry(4.2, 64)
 const frame = new MeshStandardMaterial({ color: '#2a2e3d', roughness: 0.5, metalness: 0.3 })
 const chrome = new MeshStandardMaterial({ color: '#c9d2e3', roughness: 0.25, metalness: 0.8 })
-const blackHole = new MeshStandardMaterial({ color: '#05030a', roughness: 0.2 })
 
-/* ---- Duck pedestals ------------------------------------------------------ */
+/* ---- Capybara pads: red = for sale, green = owned, yellow = riding ---------- */
 
-const BEAM = new CylinderGeometry(1.1, 1.5, 6, 20, 1, true)
+const PAD_COLORS = { sale: '#ff2a3a', owned: '#2fe05a', riding: '#ffd21a' }
 const Pedestal = memo(function Pedestal({ ped, owned, equipped, affordable, rebirthsOk }) {
-  const d = DUCKS.find((x) => x.id === ped.id)
+  const d = CAPYS.find((x) => x.id === ped.id)
   const spin = useRef()
   useFrame(({ clock }) => {
-    if (spin.current) spin.current.rotation.y = (ped.ry || 0) + Math.sin(clock.elapsedTime * 0.6 + ped.x) * 0.6
+    if (spin.current) spin.current.rotation.y = (ped.ry || 0) + Math.sin(clock.elapsedTime * 0.5 + ped.x) * 0.5
   })
   let top
   let style
-  if (equipped) [top, style] = ['Equipped!', 'green']
+  if (equipped) [top, style] = ['Riding!', 'gold']
   else if (owned) [top, style] = ['Owned', 'green']
   else if (d.wheel) [top, style] = ['Lucky Wheel Only!', 'gold']
-  else if (!rebirthsOk) [top, style] = [`Needs ${d.reb} Rebirths`, 'red']
+  else if (!rebirthsOk) [top, style] = [`Needs ${d.reb} Rebirth${d.reb === 1 ? '' : 's'}`, 'red']
   else [top, style] = [`${formatNum(d.cost)} Wins`, affordable ? 'gold' : 'red']
+  const pad = equipped ? PAD_COLORS.riding : owned ? PAD_COLORS.owned : PAD_COLORS.sale
   return (
     <group position={[ped.x, ped.y, ped.z]}>
-      <mesh geometry={CYL} material={surfaceMaterial('#ffcc1a', 'gold')} position={[0, 0.02, 0]} scale={[1.9, 0.12, 1.9]} />
-      <mesh geometry={BEAM} material={additiveMaterial(d.fx?.glow || d.body, 0.08)} position={[0, 3, 0]} />
-      <group ref={spin} scale={1.45}>
-        <Duck id={d.id} />
+      <mesh geometry={BOX} material={surfaceMaterial('#3a3d5c', 'smooth')} position={[0, 0.06, 0]} scale={[3.3, 0.12, 3.3]} receiveShadow />
+      <mesh geometry={BOX} material={surfaceMaterial(pad, 'neon')} position={[0, 0.14, 0]} scale={[2.9, 0.06, 2.9]} />
+      <group ref={spin} position={[0, 0.17, 0]} scale={1.2}>
+        <Capybara id={d.id} />
       </group>
-      <Label text={top} style={style} height={0.6} position={[0, 4.45, 0]} billboard />
-      <Label text={`+${formatNum(d.perStep)} / Step`} style="label" height={0.58} position={[0, 3.6, 0]} billboard />
+      <Label text={`+${formatNum(d.perStep)}/Step`} style="green" height={0.55} position={[0, 3.25, 0]} billboard />
+      <Label text={top} style={style} height={0.5} position={[0, 2.65, 0]} billboard />
     </group>
   )
 })
 
-/* ---- Treadmills --------------------------------------------------------- */
+/* ---- Treadmills ------------------------------------------------------------ */
 
-function TreadFx({ def }) {
+/** Show-off effects per treadmill tier (see TREADMILLS[].fx). */
+function TreadFx({ def, t }) {
   const ref = useRef()
+  const glow = def.glow
   useFrame(({ clock }) => {
     const g = ref.current
     if (!g) return
-    const t = clock.elapsedTime
-    g.children.forEach((c, i) => {
-      if (def.mult === 2) c.scale.y = 1.2 + Math.sin(t * 6 + i) * 0.4
-      else if (def.mult === 4) c.rotation.z = t * (i % 2 ? 2 : -3)
-      else c.rotation.y = t * (1.5 + i * 0.4)
-    })
+    const tt = clock.elapsedTime
+    switch (def.fx) {
+      case 'leaf':
+        g.children.forEach((c, i) => {
+          const k = (tt * 0.35 + i / g.children.length) % 1
+          c.position.set(Math.cos(i * 2.4 + tt) * 2.3, 0.6 + k * 3.2, Math.sin(i * 2.4) * 3)
+          c.rotation.set(tt * 2 + i, tt + i, 0)
+          c.scale.setScalar(0.14 * Math.sin(k * Math.PI))
+        })
+        break
+      case 'gold':
+        g.rotation.y = tt * 0.8
+        g.children.forEach((c, i) => {
+          c.scale.y = 1.2 + Math.sin(tt * 6 + i) * 0.5
+        })
+        break
+      case 'ice':
+        g.children.forEach((c, i) => {
+          c.position.y = 1.4 + Math.sin(tt * 1.6 + i) * 0.35
+          c.rotation.y = tt * (1 + i * 0.2)
+        })
+        break
+      case 'fire':
+        g.children.forEach((c, i) => {
+          c.scale.y = 1.3 + Math.sin(tt * 7 + i * 1.7) * 0.45
+        })
+        break
+      case 'bolt': {
+        // Jagged bolts that re-shape and flicker several times a second.
+        const k = Math.floor(tt * 11)
+        g.children.forEach((c, i) => {
+          const on = ((k + i * 3) * 7) % 5 < 3
+          c.visible = on
+          c.rotation.z = (((k * 13 + i * 29) % 17) / 17 - 0.5) * 1.1
+          c.rotation.y = i * 1.3 + k * 0.7
+        })
+        break
+      }
+      default:
+    }
   })
-  if (def.mult === 1) return null
-  if (def.mult === 2) {
-    return (
-      <group ref={ref}>
-        {[-1.9, 1.9].flatMap((x) => [-2.5, 0, 2.5].map((z) => [x, z])).map(([x, z], i) => (
-          <mesh key={i} geometry={CONE} material={additiveMaterial(i % 2 ? '#ffb000' : '#ff4a00', 0.75)} position={[x, 1.2, z]} scale={[0.35, 1.2, 0.35]} />
-        ))}
-      </group>
-    )
-  }
-  if (def.mult === 4) {
-    return (
-      <group ref={ref}>
-        {[0, 1, 2].map((i) => (
-          <mesh key={i} geometry={TORUS} material={additiveMaterial(def.glow, 0.85)} position={[0, 1.4, -1.5 + i * 1.5]} scale={[1.9, 1.9, 2]} />
-        ))}
-      </group>
-    )
-  }
-  return (
-    <group ref={ref}>
-      {[-1.8, 1.8].map((x) => (
-        <group key={x} position={[x, 4.2, -3.6]}>
-          <mesh geometry={SPHERE} material={blackHole} scale={0.75} />
-          <mesh geometry={TORUS} material={additiveMaterial(def.glow, 0.9)} rotation={[Math.PI / 2.4, 0, 0]} scale={[1.3, 1.3, 3]} />
+  switch (def.fx) {
+    case 'leaf':
+      return (
+        <group ref={ref}>
+          {Array.from({ length: 8 }, (_, i) => (
+            <mesh key={i} geometry={GEM} material={additiveMaterial(glow, 0.85)} />
+          ))}
+          <mesh geometry={BOX} material={additiveMaterial(glow, 0.12)} position={[0, 1.6, 0]} scale={[t.w + 0.6, 3.2, t.l + 0.4]} />
         </group>
-      ))}
-    </group>
-  )
+      )
+    case 'gold':
+      return (
+        <group position={[0, 2.6, 0]}>
+          <group ref={ref}>
+            {Array.from({ length: 10 }, (_, i) => {
+              const a = (i / 10) * Math.PI * 2
+              return <mesh key={i} geometry={CONE} material={additiveMaterial(i % 2 ? '#fff06a' : '#ffb000', 0.6)} position={[Math.cos(a) * 1.4, 0, Math.sin(a) * 1.4]} rotation={[0, -a, Math.PI / 2]} scale={[0.12, 1.4, 0.12]} />
+            })}
+          </group>
+          <mesh geometry={SPHERE} material={additiveMaterial('#fff6b0', 0.5)} scale={0.45} />
+        </group>
+      )
+    case 'ice':
+      return (
+        <group ref={ref}>
+          {[[-2.3, -2.4], [2.3, -1], [-2.3, 1.5], [2.3, 2.6]].map(([x, z], i) => (
+            <mesh key={i} geometry={GEM} material={surfaceMaterial('#bff4ff', 'crystal')} position={[x, 1.4, z]} scale={[0.35, 0.7, 0.35]} />
+          ))}
+        </group>
+      )
+    case 'fire':
+      return (
+        <group ref={ref}>
+          {[-2.2, 2.2].flatMap((x) => [-2.8, -0.9, 0.9, 2.8].map((z) => [x, z])).map(([x, z], i) => (
+            <mesh key={i} geometry={CONE} material={additiveMaterial(i % 2 ? '#ffb000' : '#ff3a00', 0.75)} position={[x, 1.1, z]} scale={[0.36, 1.3, 0.36]} />
+          ))}
+        </group>
+      )
+    case 'bolt':
+      return (
+        <group>
+          <group ref={ref}>
+            {[-2.3, 2.3, -2.3, 2.3].map((x, i) => (
+              <group key={i} position={[x, 2.4, i < 2 ? -1.6 : 1.6]}>
+                <mesh geometry={BOX} material={additiveMaterial('#bff6ff', 0.95)} position={[0, 0.6, 0]} rotation={[0, 0, 0.5]} scale={[0.09, 1.4, 0.09]} />
+                <mesh geometry={BOX} material={additiveMaterial('#5ef0ff', 0.95)} position={[0.2, -0.45, 0]} rotation={[0, 0, -0.4]} scale={[0.09, 1.3, 0.09]} />
+              </group>
+            ))}
+          </group>
+          <mesh geometry={BOX} material={additiveMaterial(glow, 0.14)} position={[0, 1.8, 0]} scale={[t.w + 1, 3.6, t.l + 0.6]} />
+        </group>
+      )
+    default:
+      return null
+  }
 }
 
-const Treadmill = memo(function Treadmill({ t, owned, rebirthsOk, affordable }) {
+const Treadmill = memo(function Treadmill({ t, i, owned, rebirthsOk, affordable }) {
   const def = TREADMILLS.find((x) => x.id === t.id)
-  const belt = useMemo(() => surfaceMaterial('#2b2f3a', 'belt', { cv: [0, 4 + Math.log2(def.mult) * 2] }), [def.mult])
-  const glow = def.glow ? surfaceMaterial(def.glow, 'neon') : surfaceMaterial('#8a93a8', 'neon')
-  let sub = null
-  if (!owned) sub = !rebirthsOk ? [`Needs ${def.reb} Rebirths`, 'red'] : [`${formatNum(def.cost)} Wins`, affordable ? 'gold' : 'red']
+  const belt = useMemo(() => surfaceMaterial('#24262f', 'belt', { cv: [0, 4 + Math.log2(def.mult) * 2] }), [def.mult])
+  const body = surfaceMaterial(def.color, 'smooth')
+  const glow = surfaceMaterial(def.glow, 'neon')
+  let sub = ['Owned!', 'green']
+  if (!owned) sub = !rebirthsOk ? [`Needs ${def.reb} Rebirth${def.reb === 1 ? '' : 's'}`, 'red'] : def.cost ? [`${formatNum(def.cost)} Wins`, affordable ? 'gold' : 'red'] : ['FREE!', 'green']
   return (
     <group position={[t.x, 0, t.z]}>
       <mesh geometry={BOX} material={belt} position={[0, t.top - 0.06, 0]} scale={[t.w, 0.12, t.l]} receiveShadow />
       {[-1, 1].map((s) => (
-        <mesh key={s} geometry={BOX} material={glow} position={[s * (t.w / 2 + 0.15), t.top + 0.05, 0]} scale={[0.22, 0.22, t.l]} />
+        <group key={s}>
+          <mesh geometry={BOX} material={body} position={[s * (t.w / 2 + 0.25), t.top + 0.08, 0]} scale={[0.5, 0.36, t.l + 0.4]} castShadow />
+          <mesh geometry={BOX} material={glow} position={[s * (t.w / 2 + 0.25), t.top + 0.27, 0]} scale={[0.3, 0.04, t.l + 0.2]} />
+        </group>
       ))}
       {/* Console + handlebars at the front (-z). */}
-      <mesh geometry={BOX} material={frame} position={[0, 1.6, -t.l / 2 - 0.2]} scale={[t.w + 0.4, 2.4, 0.5]} castShadow />
-      <mesh geometry={BOX} material={glow} position={[0, 2.4, -t.l / 2 + 0.06]} scale={[t.w - 0.6, 0.7, 0.04]} />
+      <mesh geometry={BOX} material={body} position={[0, 1.7, -t.l / 2 - 0.25]} scale={[t.w + 0.9, 2.6, 0.5]} castShadow />
+      <mesh geometry={BOX} material={frame} position={[0, 2.4, -t.l / 2 + 0.02]} scale={[t.w - 0.4, 0.9, 0.04]} />
+      <mesh geometry={BOX} material={glow} position={[0, 2.4, -t.l / 2 + 0.05]} scale={[t.w - 0.8, 0.5, 0.02]} />
       {[-1, 1].map((s) => (
-        <mesh key={s} geometry={CYL} material={chrome} position={[s * (t.w / 2 + 0.1), 1.5, -t.l / 2 + 0.6]} rotation={[0.5, 0, 0]} scale={[0.07, 2.2, 0.07]} />
+        <mesh key={s} geometry={CYL} material={chrome} position={[s * (t.w / 2 + 0.15), 1.5, -t.l / 2 + 0.6]} rotation={[0.5, 0, 0]} scale={[0.07, 2.2, 0.07]} />
       ))}
-      <TreadFx def={def} />
-      <Label text={`${def.mult}X SPEED`} style="stageSub" height={1.25} position={[0, 4.6, -t.l / 2 - 0.2]} px={120} billboard />
-      {sub && <Label text={sub[0]} style={sub[1]} height={0.65} position={[0, 3.5, -t.l / 2 - 0.2]} billboard />}
+      <TreadFx def={def} t={t} />
+      {/* Neighbouring labels are staggered in height so they never overlap. */}
+      <Label text={`${def.mult}x Speed`} style="stageSub" height={0.72} position={[0, 4.3 + (i % 2) * 1.5, -t.l / 2 - 0.2]} px={120} billboard />
+      <Label text={sub[0]} style={sub[1]} height={0.45} position={[0, 3.55 + (i % 2) * 1.5, -t.l / 2 - 0.2]} billboard />
     </group>
   )
 })
@@ -231,8 +298,8 @@ function boardTexture(kind, rows) {
   c.height = 820
   const g = c.getContext('2d')
   const grd = g.createLinearGradient(0, 0, 0, 820)
-  grd.addColorStop(0, '#2a2f6a')
-  grd.addColorStop(1, '#151838')
+  grd.addColorStop(0, '#3a5bdc')
+  grd.addColorStop(1, '#1d2a7a')
   g.fillStyle = grd
   g.fillRect(0, 0, 640, 820)
   g.strokeStyle = '#ffd84a'
@@ -251,12 +318,12 @@ function boardTexture(kind, rows) {
   const medal = ['#ffd84a', '#d8e0ee', '#e0965a']
   for (let i = 0; i < 10; i += 1) {
     const y = 140 + i * 66
-    g.fillStyle = i % 2 ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)'
+    g.fillStyle = i % 2 ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.12)'
     g.fillRect(24, y, 592, 58)
     const r = rows[i]
     g.textAlign = 'left'
     g.font = `700 34px ${FONT_UI}`
-    g.fillStyle = medal[i] || '#aab0d0'
+    g.fillStyle = medal[i] || '#c8d0f0'
     g.fillText(`#${i + 1}`, 40, y + 41)
     if (!r) continue
     g.fillStyle = '#ffffff'
@@ -277,12 +344,13 @@ function Board({ b }) {
   useEffect(() => () => mat.map?.dispose(), [mat])
   return (
     <group position={[b.x, b.y, b.z]} rotation={[0, b.ry, 0]}>
-      <mesh geometry={BOX} material={frame} position={[0, 5.4, -0.25]} scale={[7.4, 9.4, 0.4]} castShadow />
+      <mesh geometry={BOX} material={surfaceMaterial('#5c57c4', 'brick')} position={[0, 5.4, -0.3]} scale={[7.8, 9.8, 0.5]} castShadow />
+      <mesh geometry={BOX} material={surfaceMaterial('#2fbf5a', 'stud')} position={[0, 10.45, -0.3]} scale={[8.2, 0.5, 0.8]} />
       <mesh material={mat} position={[0, 5.4, 0]}>
         <planeGeometry args={[7, 9]} />
       </mesh>
       {[-1, 1].map((s) => (
-        <mesh key={s} geometry={BOX} material={frame} position={[s * 3.2, 0.5, -0.25]} scale={[0.5, 1, 0.5]} />
+        <mesh key={s} geometry={BOX} material={frame} position={[s * 3.2, 0.25, -0.3]} scale={[0.6, 0.5, 0.6]} />
       ))}
     </group>
   )
@@ -290,36 +358,27 @@ function Board({ b }) {
 
 /* ---- Lobby composition -------------------------------------------------- */
 
-export const LobbyFeatures = memo(function LobbyFeatures({ world }) {
-  const L = LOBBIES[world]
-  const ducks = useGame((s) => s.profile?.ducks)
-  const duck = useGame((s) => s.profile?.duck)
+export const LobbyFeatures = memo(function LobbyFeatures() {
+  const L = LOBBY
+  const capys = useGame((s) => s.profile?.capys)
+  const capy = useGame((s) => s.profile?.capy)
   const treads = useGame((s) => s.profile?.treads)
   const rebirths = useGame((s) => s.profile?.rebirths || 0)
   const wins = useGame((s) => s.profile?.wins || 0)
   return (
     <>
       {L.pedestals.map((p) => {
-        const d = DUCKS.find((x) => x.id === p.id)
-        return <Pedestal key={p.id} ped={p} owned={!!ducks?.includes(p.id)} equipped={duck === p.id} affordable={wins >= d.cost} rebirthsOk={rebirths >= d.reb} />
+        const d = CAPYS.find((x) => x.id === p.id)
+        return <Pedestal key={p.id} ped={p} owned={!!capys?.includes(p.id)} equipped={capy === p.id} affordable={wins >= d.cost} rebirthsOk={rebirths >= d.reb} />
       })}
-      {L.treads.map((t) => {
+      {L.treads.map((t, i) => {
         const def = TREADMILLS.find((x) => x.id === t.id)
-        return <Treadmill key={t.id} t={t} owned={!!treads?.includes(t.id)} rebirthsOk={rebirths >= def.reb} affordable={wins >= def.cost} />
+        return <Treadmill key={t.id} t={t} i={i} owned={!!treads?.includes(t.id)} rebirthsOk={rebirths >= def.reb} affordable={wins >= def.cost} />
       })}
       <LuckyWheel w={L.wheel} />
       {L.boards.map((b) => (
         <Board key={b.kind} b={b} />
       ))}
-      <Portal
-        x={L.portal.x}
-        y={L.portal.y}
-        z={L.portal.z}
-        ry={L.portal.ry}
-        title={world === 1 ? 'World 2' : 'World 1'}
-        sub={world === 1 ? (rebirths >= WORLD2_REBIRTHS ? 'Walk in & press E!' : `Needs ${WORLD2_REBIRTHS} Rebirths`) : 'Back to World 1'}
-        colors={world === 1 ? ['#29c8ff', '#7a3dff'] : ['#7dff8a', '#29c8ff']}
-      />
     </>
   )
 })

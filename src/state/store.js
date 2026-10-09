@@ -8,8 +8,10 @@ import { create } from 'zustand'
  * trigger React re-renders.
  */
 
-const SETTINGS_KEY = 'sde-settings'
-const DEFAULT_SETTINGS = { music: true, sfx: true, quality: 'high', popups: true, turnKeys: true }
+const SETTINGS_KEY = 'sce-settings'
+/** Phones and tablets start on LOW graphics (no shadows) so they stay smooth. */
+const touchFirst = typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches
+const DEFAULT_SETTINGS = { music: true, sfx: true, quality: touchFirst ? 'low' : 'high', popups: true, turnKeys: true }
 
 function loadSettings() {
   try {
@@ -44,7 +46,7 @@ export const useGame = create((set, get) => ({
   feed: [],
   big: null,
   wheel: null,
-  newDuck: null,
+  newCapy: null,
   speedPct: 100,
   settings: loadSettings(),
   dev: false,
@@ -89,6 +91,8 @@ export const runtime = {
   /** server time = Date.now() + clockOffset */
   clockOffset: 0,
   pendingTeleport: null,
+  /** True while the scene warms up (every stage built once, behind the loading screen). */
+  warm: true,
   /** Called by the E key / prompt button. */
   interact: null,
   /** Floating "+N" step popups waiting to spawn. */

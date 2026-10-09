@@ -118,7 +118,7 @@ const RemoteRider = memo(function RemoteRider({ sid, player }) {
     const tread = (r.flags & 8) !== 0
     footTrail.step({ x: r.x, y: r.y, z: r.z, yaw: r.yaw, now: performance.now() / 1000,
       grounded: grounded && !!(r.flags & 1) && !tread && group.current.visible && !far, teleported: far,
-      duck: player.duck || 'rubber', level: player.level || 1,
+      capy: player.capy || 'classic', level: player.level || 1,
     })
     if (!grounded && p.grounded && (r.flags & 4)) mo.jumpT = 0
     if (grounded && !p.grounded) mo.landT = 0
@@ -127,7 +127,7 @@ const RemoteRider = memo(function RemoteRider({ sid, player }) {
     mo.phase += dt * (7 + mo.ratio * 7)
     mo.grounded = grounded
     mo.vy = r.flags & 4 ? 6 : grounded ? 0 : -6
-    // Waddle speed eases toward the real speed (frame-rate independent).
+    // Trot speed eases toward the real speed (frame-rate independent).
     mo.ratio += ((tread ? 1 : Math.min(1, spd / 9)) - mo.ratio) * (1 - Math.pow(0.002, dt))
     mo.jumpT += dt
     mo.landT += dt
@@ -135,7 +135,7 @@ const RemoteRider = memo(function RemoteRider({ sid, player }) {
 
   return (
     <group ref={group}>
-      <Rider duck={player.duck || 'rubber'} equipped={player.avatar} proportions={player.proportions} motionRef={motion} />
+      <Rider capy={player.capy || 'classic'} equipped={player.avatar} proportions={player.proportions} motionRef={motion} />
       <sprite material={tag} position={[0, 3.2, 0]} scale={[2.6, 0.49, 1]} />
     </group>
   )

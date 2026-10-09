@@ -8,7 +8,7 @@ import { migrate } from '../shared/rules'
  * tell the difference.
  */
 
-const KEY = 'sde-offline-profile'
+const KEY = 'sce-offline-profile'
 const TICK_MS = 100
 
 function loadProfile(name) {
@@ -47,7 +47,7 @@ export function createOfflineRoom({ name, dispatch, existing = null }) {
     }
   }
 
-  const row = (v) => [{ name: profile.name, v, r: profile.rebirths, duck: profile.duck }]
+  const row = (v) => [{ name: profile.name, v, r: profile.rebirths, capy: profile.capy }]
   logic.addPlayer(
     { sid, uid: 'offline', profile },
     {

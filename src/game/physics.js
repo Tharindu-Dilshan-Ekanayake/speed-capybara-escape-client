@@ -1,4 +1,4 @@
-import { LOBBIES, STAGES } from '../shared/course'
+import { LOBBY, STAGES } from '../shared/course'
 import { boulderState, dynBox, floodState, METEOR_HIT, meteorPhase, moverOffset, pendAngle, pendHead, sweepAngle, windActive } from './dynamics'
 
 /**
@@ -86,11 +86,9 @@ function cylItem(c) {
 export function buildCollision() {
   if (built) return
   built = true
-  for (const L of [LOBBIES[1], LOBBIES[2]]) {
-    for (const b of L.boxes) if (b.k !== 'deco') addItem(boxItem(b))
-    for (const t of L.trees) {
-      if (t.solid) addItem(cylItem({ x: t.x, z: t.z, r: 0.55 * t.s, top: t.y + 3.4 * t.s, h: 3.4 * t.s, k: 'solid' }))
-    }
+  for (const b of LOBBY.boxes) if (b.k !== 'deco') addItem(boxItem(b))
+  for (const t of LOBBY.trees) {
+    if (t.solid) addItem(cylItem({ x: t.x, z: t.z, r: 0.5 * t.s, top: t.y + 4 * t.s, h: 4 * t.s, k: 'solid' }))
   }
   for (let n = 1; n < STAGES.length; n += 1) {
     const S = STAGES[n]
@@ -505,7 +503,7 @@ export function stepPlayer(pl, ctl, dt, env) {
       const f = meteorPhase(d, env.T)
       if (f < METEOR_HIT[0] || f > METEOR_HIT[1]) continue
       if (Math.hypot(pl.x - d.x, pl.z - d.z) < d.r && pl.y < d.floor + 3) {
-        events.push({ type: 'kill', cause: 'burn' })
+        events.push({ type: 'kill', cause: d.cause || 'burn' })
         return events
       }
     }

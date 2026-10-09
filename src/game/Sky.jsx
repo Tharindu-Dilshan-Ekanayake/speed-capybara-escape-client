@@ -5,36 +5,34 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
-  DoubleSide,
   Fog,
   MeshStandardMaterial,
   Object3D,
-  RingGeometry,
   ShaderMaterial,
   SphereGeometry,
 } from 'three'
 
-import { LOBBIES, STAGES } from '../shared/course'
+import { LOBBY, STAGES } from '../shared/course'
 import { runtime, useGame } from '../state/store'
 
 /**
- * Sky dome + clouds + rainbow + stars, and the matching sun / hemisphere light.
+ * Sky dome + clouds + stars, and the matching sun / hemisphere light.
  * Each stage theme picks a sky; colours blend smoothly when you cross into a new stage.
  */
 
 export const SKIES = {
-  day: { top: '#1652f0', mid: '#3f93ff', bottom: '#b4dcff', fog: '#a9d4ff', hemiSky: '#dcecff', hemiGround: '#4a6a2a', sun: 2.5, hemi: 0.8, stars: 0, rainbow: 1, cloud: '#ffffff' },
-  ember: { top: '#240812', mid: '#7a2416', bottom: '#ff8a3a', fog: '#a8482a', hemiSky: '#ffb08a', hemiGround: '#3a1410', sun: 1.8, hemi: 0.9, stars: 0.2, rainbow: 0, cloud: '#ff9a6a' },
-  high: { top: '#2b78ff', mid: '#86c4ff', bottom: '#ffffff', fog: '#d6ebff', hemiSky: '#ffffff', hemiGround: '#9fc6ff', sun: 2.6, hemi: 1.25, stars: 0, rainbow: 1, cloud: '#ffffff' },
-  dusk: { top: '#0e0820', mid: '#2e1636', bottom: '#5a2234', fog: '#22101e', hemiSky: '#8a4a6a', hemiGround: '#1a0a14', sun: 1.1, hemi: 0.75, stars: 0.6, rainbow: 0, cloud: '#4a2a4a' },
-  night: { top: '#050716', mid: '#1a1450', bottom: '#4a2a8a', fog: '#251c52', hemiSky: '#9a8aff', hemiGround: '#2a1a4a', sun: 1.6, hemi: 1.0, stars: 1, rainbow: 0, cloud: '#6a5aaa' },
-  sunset: { top: '#33268a', mid: '#c0588a', bottom: '#ffb46a', fog: '#e09486', hemiSky: '#ffd0b0', hemiGround: '#5a3a5a', sun: 2.2, hemi: 1.05, stars: 0.2, rainbow: 0, cloud: '#ffd6e0' },
-  golden: { top: '#ff962a', mid: '#ffd07a', bottom: '#fff4d2', fog: '#ffe2a6', hemiSky: '#fff2c8', hemiGround: '#8a6a2a', sun: 2.6, hemi: 1.2, stars: 0, rainbow: 1, cloud: '#ffffff' },
+  day: { top: '#1652f0', mid: '#3f93ff', bottom: '#b4dcff', fog: '#a9d4ff', hemiSky: '#dcecff', hemiGround: '#4a6a2a', sun: 2.5, hemi: 0.8, stars: 0, cloud: '#ffffff' },
+  ember: { top: '#240812', mid: '#7a2416', bottom: '#ff8a3a', fog: '#a8482a', hemiSky: '#ffb08a', hemiGround: '#3a1410', sun: 1.8, hemi: 0.9, stars: 0.2, cloud: '#ff9a6a' },
+  high: { top: '#2b78ff', mid: '#86c4ff', bottom: '#ffffff', fog: '#d6ebff', hemiSky: '#ffffff', hemiGround: '#9fc6ff', sun: 2.6, hemi: 1.25, stars: 0, cloud: '#ffffff' },
+  dusk: { top: '#0e0820', mid: '#2e1636', bottom: '#5a2234', fog: '#22101e', hemiSky: '#8a4a6a', hemiGround: '#1a0a14', sun: 1.1, hemi: 0.75, stars: 0.6, cloud: '#4a2a4a' },
+  night: { top: '#050716', mid: '#1a1450', bottom: '#4a2a8a', fog: '#251c52', hemiSky: '#9a8aff', hemiGround: '#2a1a4a', sun: 1.6, hemi: 1.0, stars: 1, cloud: '#6a5aaa' },
+  sunset: { top: '#33268a', mid: '#c0588a', bottom: '#ffb46a', fog: '#e09486', hemiSky: '#ffd0b0', hemiGround: '#5a3a5a', sun: 2.2, hemi: 1.05, stars: 0.2, cloud: '#ffd6e0' },
+  golden: { top: '#ff962a', mid: '#ffd07a', bottom: '#fff4d2', fog: '#ffe2a6', hemiSky: '#fff2c8', hemiGround: '#8a6a2a', sun: 2.6, hemi: 1.2, stars: 0, cloud: '#ffffff' },
 }
 
 export function skyFor(region) {
   if (region.stage) return STAGES[region.stage].theme.sky
-  return LOBBIES[region.world].theme.sky
+  return LOBBY.theme.sky
 }
 
 /** Live (blended) sky colours, read by Lights + fog every frame. */
@@ -49,7 +47,6 @@ export const liveSky = {
   sun: SKIES.day.sun,
   hemi: SKIES.day.hemi,
   stars: 0,
-  rainbow: 1,
 }
 
 const dome = new SphereGeometry(900, 32, 16)
@@ -66,25 +63,6 @@ const domeMat = new ShaderMaterial({
     }`,
   side: BackSide,
   depthWrite: false,
-  fog: false,
-})
-
-const rainbowGeo = new RingGeometry(260, 300, 96, 1, 0, Math.PI)
-const rainbowMat = new ShaderMaterial({
-  uniforms: { uO: { value: 1 } },
-  vertexShader: `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-  fragmentShader: `
-    uniform float uO; varying vec2 vP;
-    vec3 hsv(float h){ vec3 k = vec3(1.0, 2.0/3.0, 1.0/3.0); vec3 p = abs(fract(vec3(h) + k) * 6.0 - 3.0); return clamp(p - 1.0, 0.0, 1.0); }
-    void main(){
-      float r = (length(vP) - 260.0) / 40.0;
-      vec3 c = hsv(0.78 * (1.0 - r));
-      float edge = smoothstep(0.0, 0.12, r) * smoothstep(1.0, 0.88, r);
-      gl_FragColor = vec4(c, 0.55 * edge * uO);
-    }`,
-  transparent: true,
-  depthWrite: false,
-  side: DoubleSide,
   fog: false,
 })
 
@@ -135,7 +113,6 @@ export function Sky() {
   const group = useRef()
   const clouds = useRef()
   const stars = useRef()
-  const rainbow = useRef()
   const scene = useThree((s) => s.scene)
   const region = useGame((s) => s.region)
   const skyId = skyFor(region)
@@ -164,7 +141,7 @@ export function Sky() {
     const t = target[skyId] || target.day
     const k = 1 - Math.pow(0.15, dt)
     for (const key of ['top', 'mid', 'bottom', 'fog', 'hemiSky', 'hemiGround', 'cloud']) liveSky[key].lerp(t[key], k)
-    for (const key of ['sun', 'hemi', 'stars', 'rainbow']) liveSky[key] += (t[key] - liveSky[key]) * k
+    for (const key of ['sun', 'hemi', 'stars']) liveSky[key] += (t[key] - liveSky[key]) * k
     fog.color.copy(liveSky.fog)
     cloudMat.color.copy(liveSky.cloud)
     cloudMat.emissive.copy(liveSky.cloud)
@@ -174,15 +151,12 @@ export function Sky() {
       stars.current.visible = liveSky.stars > 0.05
       stars.current.material.opacity = liveSky.stars
     }
-    rainbowMat.uniforms.uO.value = liveSky.rainbow * (region.stage === 0 || (region.stage >= 2 && region.stage <= 3) ? 1 : 0.6)
-    if (rainbow.current) rainbow.current.visible = liveSky.rainbow > 0.05
     runtime.skyId = skyId
   })
 
   return (
     <group ref={group}>
       <mesh geometry={dome} material={domeMat} renderOrder={-10} frustumCulled={false} />
-      <mesh ref={rainbow} geometry={rainbowGeo} material={rainbowMat} position={[90, -40, -560]} renderOrder={-9} frustumCulled={false} />
       <instancedMesh ref={clouds} args={[puff, cloudMat, CLOUDS.length]} frustumCulled={false} />
       <points ref={stars} geometry={starGeo} frustumCulled={false}>
         <pointsMaterial color="#ffffff" size={2.2} sizeAttenuation={false} transparent opacity={0} fog={false} depthWrite={false} />

@@ -3,7 +3,7 @@ import { Client } from 'colyseus.js'
 import { play } from '../audio/sfx'
 import { getSDK, safeCall } from '../bloxity/sdk'
 import { getBloxityState, useBloxityStore } from '../bloxity/store'
-import { DUCKS, GAME_ID, ROOM_NAME, WHEEL, formatNum } from '../shared/gameData'
+import { CAPYS, GAME_ID, ROOM_NAME, WHEEL, formatNum } from '../shared/gameData'
 import { runtime, serverNow, useGame } from '../state/store'
 import { createOfflineRoom } from './offline'
 
@@ -22,8 +22,10 @@ import { createOfflineRoom } from './offline'
 const DIRECT_URL = import.meta.env.VITE_SERVER_URL || ''
 const GAME = import.meta.env.VITE_GAME_ID || GAME_ID
 const MATCHMAKER = import.meta.env.VITE_MATCHMAKER_URL || 'https://play.bloxity.io'
-// Generous: after idle time Legion scales to zero and the first join cold-starts a pod.
-const CONNECT_TIMEOUT_MS = 25000
+// Generous: after idle time Legion scales to zero and the matchmaker holds the first
+// resolve while a pod cold-starts (up to ~45 s). The join itself is quick after that.
+const RESOLVE_TIMEOUT_MS = 50000
+const JOIN_TIMEOUT_MS = 20000
 
 let room = null
 let connecting = false
@@ -37,10 +39,10 @@ const withTimeout = (promise, ms) =>
 
 function deviceId() {
   try {
-    let id = localStorage.getItem('sde-device')
+    let id = localStorage.getItem('sce-device')
     if (!id) {
       id = (crypto.randomUUID?.() || `${Date.now()}${Math.random()}`).replace(/[^\w-]/g, '')
-      localStorage.setItem('sde-device', id)
+      localStorage.setItem('sce-device', id)
     }
     return id
   } catch {
@@ -109,11 +111,12 @@ export async function connect() {
       identityWaited = true
       await waitForIdentity()
     }
-    const endpoint = await withTimeout(resolveEndpoint(), CONNECT_TIMEOUT_MS)
+    // A fresh endpoint (pinned to one pod) and a NEW Client on every attempt.
+    const endpoint = await withTimeout(resolveEndpoint(), RESOLVE_TIMEOUT_MS)
     const client = new Client(endpoint)
     const joining = client.joinOrCreate(ROOM_NAME, joinOptions())
     try {
-      room = await withTimeout(joining, CONNECT_TIMEOUT_MS)
+      room = await withTimeout(joining, JOIN_TIMEOUT_MS)
     } catch (err) {
       // A join that lands after we gave up must not linger as a ghost player.
       joining.then((late) => late.leave(true)).catch(() => {})
@@ -126,9 +129,10 @@ export async function connect() {
     console.warn('[net] connect failed', err)
     room = null
     failures += 1
-    // No server at start-up: play solo right away. Mid-game (a redeploy or a blip): keep
-    // retrying with backoff for ~20 s before carrying on offline with the same profile.
-    if (failures >= (g.profile ? 6 : 1)) startOffline()
+    // No server at start-up: one more try (a pod may still be booting), then play solo.
+    // Mid-game (a redeploy or a blip): keep retrying with backoff for ~20 s before
+    // carrying on offline with the same profile.
+    if (failures >= (g.profile ? 6 : 2)) startOffline()
     else setTimeout(connect, Math.min(6000, 800 * 2 ** (failures - 1)))
   } finally {
     connecting = false
@@ -291,15 +295,11 @@ on('fx', (fx) => {
   runtime.flashes.set(fx.sid, performance.now())
 })
 
-on('reward', (m) => {
-  play('win')
+on('reward', () => {
+  // No banner: it rains coins around you back in the lobby.
+  play('coins')
   runtime.bursts.push({ kind: 'coins', at: performance.now() })
-  get().showBig({
-    kind: 'wins',
-    text: `+${formatNum(m.wins)} Win${m.wins === 1 ? '' : 's'}`,
-    sub: m.race ? `Stage ${m.stage} cleared - RACE x2!` : `Stage ${m.stage} cleared!`,
-    ms: 2200,
-  })
+  setTimeout(() => runtime.bursts.push({ kind: 'rain', at: performance.now() }), 350)
 })
 
 on('race', (race) => {
@@ -325,11 +325,11 @@ on('packed', (m) => {
   play('buy')
   get().toast(m.spins ? `+${m.spins} Spins!` : `+${formatNum(m.xp)} Steps!`, 'good')
 })
-on('newDuck', (m) => {
-  const d = DUCKS.find((x) => x.id === m.id)
-  set({ newDuck: { id: m.id, at: performance.now() } })
-  play('quack')
-  get().showBig({ kind: 'duck', text: 'NEW DUCK!', sub: `${d?.name} - +${formatNum(d?.perStep)} / Step`, ms: 2600 })
+on('newCapy', (m) => {
+  const d = CAPYS.find((x) => x.id === m.id)
+  set({ newCapy: { id: m.id, at: performance.now() } })
+  play('squeak')
+  get().showBig({ kind: 'capy', text: 'NEW CAPYBARA!', sub: `${d?.name} - +${formatNum(d?.perStep)} / Step`, ms: 2600 })
 })
 on('rebirthed', (m) => {
   play('rebirth')

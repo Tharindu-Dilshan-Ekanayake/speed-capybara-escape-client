@@ -129,20 +129,21 @@ export function surfaceMaterial(color, m = 'stud', extra = {}) {
   })
 }
 
-/** Big animated liquid planes (water / lava / toxic). */
+/** Big animated liquid planes (water / swamp / hot spring / lava / toxic). */
 export function liquidMaterial(kind) {
   return cached(`liquid-${kind}`, () => {
     const hot = kind === 'lava' || kind === 'toxic'
-    const base = { water: '#7ff0ff', lava: '#ffb070', toxic: '#c8ff7a' }[kind] || '#ffffff'
+    const base = { water: '#7ff0ff', swamp: '#9fe07a', spring: '#c8fbff', lava: '#ffb070', toxic: '#c8ff7a' }[kind] || '#ffffff'
+    const glow = { lava: '#ff3a00', toxic: '#3aff00', swamp: '#1f6a1a', spring: '#2ac7d8' }[kind] || '#0aa0c0'
     const mat = new MeshStandardMaterial({
       color: new Color(base),
       map: liquidTexture(kind),
       roughness: hot ? 0.9 : 0.25,
       metalness: 0,
-      emissive: new Color(kind === 'lava' ? '#ff3a00' : kind === 'toxic' ? '#3aff00' : '#0aa0c0'),
+      emissive: new Color(glow),
       emissiveIntensity: hot ? 0.85 : 0.35,
-      transparent: kind === 'water',
-      opacity: 0.92,
+      transparent: !hot,
+      opacity: kind === 'swamp' ? 0.96 : 0.92,
     })
     return project(mat, { tile: 6, scroll: new Vector2(0.02, hot ? 0.015 : 0.04) })
   })

@@ -1,23 +1,22 @@
-import { duckById, DUCKS } from '../shared/gameData.js'
-import { LOBBIES, regionAt, STAGES } from '../shared/course.js'
+import { capyById, CAPYS } from '../shared/gameData.js'
+import { LOBBY, regionAt, STAGES } from '../shared/course.js'
 
 export const FOOTPRINT_LIFETIME = 1
 export const FOOTPRINT_SPACING = 0.55
 export const FOOTPRINT_MOTIFS = {
-  rubber: 'feather', shadow: 'crescent', ruby: 'gem', gent: 'bow', ghost: 'spirit',
-  inferno: 'flame', love: 'heart', frost: 'snow', storm: 'wind', volt: 'bolt',
-  lucky: 'clover', galaxy: 'comet', crystal: 'prism', lavalord: 'cracks', angel: 'wings',
-  neon: 'chevron', toxic: 'droplet', royal: 'crown', void: 'vortex', phoenix: 'phoenix', golden: 'sun',
+  classic: 'droplet', choco: 'crescent', lime: 'gem', gent: 'bow', yuzu: 'sun', ghost: 'spirit',
+  lava: 'flame', frost: 'snow', love: 'heart', storm: 'bolt', lucky: 'clover',
+  galaxy: 'comet', angel: 'wings', dragon: 'cracks', golden: 'crown',
 }
 const styleCache = new Map()
 
 export function footprintStyle(id, level = 1) {
-  const duck = duckById(id)
+  const capy = capyById(id)
   const grade = Math.max(1, Math.min(129, Math.floor(Number(level) || 1)))
-  const key = `${duck.id}:${grade}`
+  const key = `${capy.id}:${grade}`
   if (styleCache.has(key)) return styleCache.get(key)
   const tier = Math.min(1, Math.log2(1 + (grade - 1) / 8) / 4)
-  const style = { tile: DUCKS.indexOf(duck), motif: FOOTPRINT_MOTIFS[duck.id], color: duck.body, accent: duck.fx?.glow || duck.fx?.rim || duck.beak, rainbow: !!duck.fx?.rainbow, tier, size: 0.44 + tier * 0.13 }
+  const style = { tile: CAPYS.indexOf(capy), motif: FOOTPRINT_MOTIFS[capy.id], color: capy.fur, accent: capy.fx?.glow || capy.belly, tier, size: 0.44 + tier * 0.13 }
   styleCache.set(key, style)
   return style
 }
@@ -25,7 +24,7 @@ export function footprintStyle(id, level = 1) {
 /** Decal paths are decorative boxes above the collision floor; stamp on their top. */
 export function footprintSurfaceY(x, y, z) {
   const region = regionAt(x, z)
-  const boxes = region.stage ? STAGES[region.stage].boxes : LOBBIES[region.world].boxes
+  const boxes = region.stage ? STAGES[region.stage].boxes : LOBBY.boxes
   let top = y
   for (const b of boxes) {
     const surface = b.y + b.h / 2
@@ -58,7 +57,7 @@ export class FootprintPool {
 
 export const footprintPool = new FootprintPool()
 
-/** Distance-based alternating footfalls; stopped, airborne and teleporting ducks leave no trail. */
+/** Distance-based alternating footfalls; stopped, airborne and teleporting capybaras leave no trail. */
 export class FootprintTrail {
   constructor(actor) {
     this.actor = actor
@@ -77,7 +76,7 @@ export class FootprintTrail {
     }
     if (moved < 0.001) return
     let along = FOOTPRINT_SPACING - this.distance
-    const style = footprintStyle(frame.duck, frame.level)
+    const style = footprintStyle(frame.capy, frame.level)
     while (along <= moved) {
       const fraction = along / moved
       const x = previous.x + (frame.x - previous.x) * fraction + Math.cos(frame.yaw) * this.side * 0.19

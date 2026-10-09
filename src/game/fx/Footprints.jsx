@@ -71,9 +71,8 @@ export default function Footprints() {
             accent: new Color(entry.style.accent).lerp(new Color('#ffffff'), 0.6),
           })
           const { color, accent } = data.palettes.get(entry.style)
-          const printColor = entry.style.rainbow ? new Color().setHSL((entry.at * 0.25) % 1, 0.8, 0.6 + entry.style.tier * 0.08) : color
           attrs.aBirth.setX(i, entry.at); attrs.aTile.setX(i, entry.style.tile); attrs.aTier.setX(i, entry.style.tier)
-          attrs.aColor.setXYZ(i, printColor.r, printColor.g, printColor.b); attrs.aAccent.setXYZ(i, accent.r, accent.g, accent.b)
+          attrs.aColor.setXYZ(i, color.r, color.g, color.b); attrs.aAccent.setXYZ(i, accent.r, accent.g, accent.b)
           data.seen[i] = entry
           attributesChanged = true
         }

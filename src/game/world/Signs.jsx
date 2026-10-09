@@ -1,6 +1,6 @@
 import { useFrame } from '@react-three/fiber'
 import { memo, useMemo, useRef } from 'react'
-import { CylinderGeometry, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, TorusGeometry, Vector3 } from 'three'
+import { AdditiveBlending, BoxGeometry, CylinderGeometry, DoubleSide, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, TorusGeometry, Vector3 } from 'three'
 
 import { textTexture } from '../textures'
 
@@ -36,9 +36,11 @@ export const Label = memo(function Label({ text, style = 'label', height = 1, po
   return <mesh ref={ref} geometry={PLANE} material={mat} position={position} rotation={rotation} scale={[h * aspect, h, 1]} renderOrder={5} />
 })
 
+const SIGN_STYLES = new Set(['stage', 'stageSub', 'warn', 'red', 'green', 'gold', 'label'])
+
 export const Signs = memo(function Signs({ signs }) {
   return signs.map((s, i) => (
-    <Label key={i} text={s.text} style={s.kind === 'stage' ? 'stage' : s.kind === 'stageSub' ? 'stageSub' : s.kind === 'warn' ? 'warn' : 'label'} height={s.size} position={[s.x, s.y, s.z]} rotation={[0, s.ry || 0, 0]} px={s.kind === 'stage' ? 160 : 110} />
+    <Label key={i} text={s.text} style={SIGN_STYLES.has(s.kind) ? s.kind : 'label'} height={s.size} position={[s.x, s.y, s.z]} rotation={[0, s.ry || 0, 0]} px={s.kind === 'stage' ? 160 : 110} />
   ))
 })
 
@@ -67,13 +69,26 @@ export function Trophy({ position, scale = 1 }) {
   )
 }
 
-/** The end-of-stage wins pad marker: spinning trophy + "+N" label. */
+/** The end-of-stage wins pad: a glowing gold plate, a light beam, a trophy and "Press E". */
+const GLOW_PLATE = new BoxGeometry(1, 1, 1)
+const BEAM = new CylinderGeometry(2.1, 2.5, 12, 24, 1, true)
+const glowMat = new MeshBasicMaterial({ color: '#ffd21a', transparent: true, opacity: 0.6, blending: AdditiveBlending, depthWrite: false, toneMapped: false })
+const beamMat = new MeshBasicMaterial({ color: '#ffe066', transparent: true, opacity: 0.2, blending: AdditiveBlending, depthWrite: false, toneMapped: false, side: DoubleSide })
 export const PadMarker = memo(function PadMarker({ pad, wins }) {
   const text = useMemo(() => `+${wins}`, [wins])
+  useFrame(({ clock }) => {
+    const k = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 3)
+    glowMat.opacity = 0.35 + k * 0.5
+    beamMat.opacity = 0.1 + k * 0.14
+  })
   return (
     <group>
+      <mesh geometry={GLOW_PLATE} material={glowMat} position={[pad.x, pad.y + 0.2, pad.z]} scale={[pad.w, 0.04, pad.d]} renderOrder={3} />
+      <mesh geometry={GLOW_PLATE} material={glowMat} position={[pad.x, pad.y + 0.22, pad.z]} scale={[pad.w * 0.6, 0.04, pad.d * 0.6]} renderOrder={3} />
+      <mesh geometry={BEAM} material={beamMat} position={[pad.x, pad.y + 6, pad.z]} renderOrder={3} />
       <Trophy position={[pad.x - 0.9, pad.y + 1.6, pad.z]} scale={1.3} />
       <Label text={text} style="gold" height={1.1} position={[pad.x + 0.9, pad.y + 2.6, pad.z]} billboard />
+      <Label text="Press E to claim!" style="warn" height={0.6} position={[pad.x, pad.y + 4, pad.z]} billboard />
     </group>
   )
 })

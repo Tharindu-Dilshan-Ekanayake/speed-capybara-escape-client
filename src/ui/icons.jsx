@@ -70,14 +70,25 @@ const PeopleSvg = ({ size = 56 }) => (
   </svg>
 )
 
-const DuckIconSvg = ({ size = 56, body = '#ffd21a', beak = '#ff8a1a', glow }) => (
+/** Side-on chibi capybara: barrel body, boxy head, dark nose, tiny ear, stubby legs. */
+const CapyIconSvg = ({ size = 56, fur = '#b9773f', nose = '#4a2a18', glow, yuzu = false }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" style={glow ? { filter: `drop-shadow(0 0 6px ${glow})` } : undefined}>
-    <ellipse cx="46" cy="64" rx="36" ry="24" fill={body} {...S} />
-    <circle cx="64" cy="34" r="20" fill={body} {...S} />
-    <path d="M80 34q16 2 14 9-9 4-17-2z" fill={beak} {...S} strokeWidth="4" />
-    <circle cx="68" cy="30" r="4.5" fill="#111" />
-    <circle cx="69.5" cy="28.5" r="1.5" fill="#fff" />
-    <path d="M22 60q10 12 26 6" fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth="5" strokeLinecap="round" />
+    <rect x="20" y="66" width="11" height="20" rx="5" fill={fur} {...S} strokeWidth="4" />
+    <rect x="54" y="66" width="11" height="20" rx="5" fill={fur} {...S} strokeWidth="4" />
+    <rect x="6" y="38" width="68" height="40" rx="20" fill={fur} {...S} />
+    <rect x="57" y="15" width="11" height="12" rx="5" fill={fur} {...S} strokeWidth="4" />
+    <rect x="52" y="22" width="42" height="34" rx="14" fill={fur} {...S} />
+    <rect x="80" y="29" width="14" height="13" rx="6" fill={nose} />
+    <circle cx="72" cy="33" r="3.8" fill="#111" />
+    <circle cx="73.3" cy="31.7" r="1.3" fill="#fff" />
+    <ellipse cx="71" cy="45" rx="5" ry="2.6" fill="#ff8fb3" opacity="0.6" />
+    <path d="M16 52q14-9 32-5" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="5" strokeLinecap="round" />
+    {yuzu && (
+      <>
+        <circle cx="70" cy="14" r="9" fill="#ffb21a" {...S} strokeWidth="4" />
+        <path d="M72 5q6-3 9 1-5 3-9-1z" fill="#2fbf3a" />
+      </>
+    )}
   </svg>
 )
 
@@ -134,7 +145,7 @@ export const Rebirth = memo(RebirthSvg)
 export const Gear = memo(GearSvg)
 export const Gift = memo(GiftSvg)
 export const People = memo(PeopleSvg)
-export const DuckIcon = memo(DuckIconSvg)
+export const CapyIcon = memo(CapyIconSvg)
 export const MapIcon = memo(MapIconSvg)
 export const WheelIcon = memo(WheelIconSvg)
 export const Sneaker = memo(SneakerSvg)

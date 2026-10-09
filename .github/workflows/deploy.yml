@@ -1,6 +1,6 @@
 # Builds the game client and uploads it to Bloxity hosting.
-#   dev branch  -> https://speed-duck-escape.dev.play.bloxity.io
-#   main branch -> https://speed-duck-escape.play.bloxity.io
+#   dev branch  -> https://1-speed-capybara-escape.dev.play.bloxity.io
+#   main branch -> https://1-speed-capybara-escape.play.bloxity.io
 # Required repo secret: LEGION_DEPLOY_TOKEN
 name: deploy-client
 
@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  GAME_ID: speed-duck-escape
+  GAME_ID: 1-speed-capybara-escape
 
 jobs:
   deploy:

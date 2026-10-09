@@ -1,9 +1,9 @@
 import { CanvasTexture, LinearFilter } from 'three'
-import { DUCKS } from '../../shared/gameData.js'
+import { CAPYS } from '../../shared/gameData.js'
 import { FOOTPRINT_MOTIFS } from '../footprints.js'
 
 export const ATLAS_COLUMNS = 5
-export const ATLAS_ROWS = Math.ceil(DUCKS.length / ATLAS_COLUMNS)
+export const ATLAS_ROWS = Math.ceil(CAPYS.length / ATLAS_COLUMNS)
 
 function polygon(ctx, points) {
   ctx.beginPath()
@@ -106,25 +106,24 @@ function motif(ctx, kind) {
   }
 }
 
-/** RGB stores separate masks: webbed foot, skin emblem, and level-dependent sparkles. */
+/** RGB stores separate masks: capybara paw, skin emblem, and level-dependent sparkles. */
 export function footprintTexture() {
   const canvas = document.createElement('canvas')
   canvas.width = ATLAS_COLUMNS * 128
   canvas.height = ATLAS_ROWS * 128
   const ctx = canvas.getContext('2d')
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, canvas.width, canvas.height)
-  DUCKS.forEach((duck, i) => {
+  CAPYS.forEach((capy, i) => {
     ctx.save(); ctx.translate((i % ATLAS_COLUMNS) * 128, Math.floor(i / ATLAS_COLUMNS) * 128)
     ctx.globalCompositeOperation = 'screen'
+    // Capybara paw: a big rounded pad and three chunky toes.
     ctx.fillStyle = '#ff0000'
-    ctx.beginPath(); ctx.moveTo(64, 106); ctx.quadraticCurveTo(52, 90, 36, 80)
-    ctx.quadraticCurveTo(20, 73, 22, 54); ctx.quadraticCurveTo(20, 47, 27, 45)
-    ctx.lineTo(42, 53); ctx.lineTo(46, 30); ctx.quadraticCurveTo(47, 20, 55, 22)
-    ctx.lineTo(66, 40); ctx.lineTo(79, 24); ctx.quadraticCurveTo(88, 20, 89, 30)
-    ctx.lineTo(89, 55); ctx.lineTo(105, 48); ctx.quadraticCurveTo(112, 52, 107, 66)
-    ctx.quadraticCurveTo(96, 91, 77, 95); ctx.quadraticCurveTo(70, 100, 64, 106); ctx.fill()
-    ctx.save(); ctx.translate(64, 70); ctx.scale(17, 17)
-    ctx.fillStyle = ctx.strokeStyle = '#00ff00'; motif(ctx, FOOTPRINT_MOTIFS[duck.id]); ctx.restore()
+    ctx.beginPath(); ctx.ellipse(64, 80, 30, 25, 0, 0, Math.PI * 2); ctx.fill()
+    for (const [x, y, rot] of [[34, 44, -0.35], [64, 32, 0], [94, 44, 0.35]]) {
+      ctx.beginPath(); ctx.ellipse(x, y, 12, 16, rot, 0, Math.PI * 2); ctx.fill()
+    }
+    ctx.save(); ctx.translate(64, 80); ctx.scale(15, 15)
+    ctx.fillStyle = ctx.strokeStyle = '#00ff00'; motif(ctx, FOOTPRINT_MOTIFS[capy.id]); ctx.restore()
     ctx.fillStyle = '#0000ff'
     for (const [x, y, size] of [[18, 25, 4], [105, 20, 3], [111, 99, 4], [33, 111, 3]]) {
       ctx.save(); ctx.translate(x, y); star(ctx, 4, size); ctx.restore()
