@@ -1,0 +1,52 @@
+# Builds the game client and uploads it to Bloxity hosting.
+#   dev branch  -> https://speed-duck-escape.dev.play.bloxity.io
+#   main branch -> https://speed-duck-escape.play.bloxity.io
+# Required repo secret: LEGION_DEPLOY_TOKEN
+name: deploy-client
+
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GAME_ID: speed-duck-escape
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+      - name: Zip build
+        run: cd dist && zip -qr ../build.zip .
+
+      - name: Upload to Bloxity
+        env:
+          LEGION_DEPLOY_TOKEN: ${{ secrets.LEGION_DEPLOY_TOKEN }}
+        run: |
+          if [ -z "${LEGION_DEPLOY_TOKEN}" ]; then
+            echo "::error::Secret LEGION_DEPLOY_TOKEN is empty. Add it under Settings > Secrets and variables > Actions > the Secrets tab (not Variables)."
+            exit 1
+          fi
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then CH=prod; else CH=dev; fi
+          SHA=${GITHUB_SHA::12}
+          CODE=$(curl -s -o resp.txt -w '%{http_code}' -X POST \
+            "https://api.bloxity.io/v1/hosting/games/${GAME_ID}/frontend?channel=${CH}&version=${SHA}" \
+            -H "Authorization: Bearer ${LEGION_DEPLOY_TOKEN}" \
+            -H "Content-Type: application/zip" \
+            --data-binary @build.zip)
+          echo "HTTP ${CODE}"; cat resp.txt; echo
+          [ "${CODE}" -lt 300 ]

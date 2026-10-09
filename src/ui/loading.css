@@ -1,0 +1,166 @@
+.loading {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  font-family: var(--font);
+  color: #fff;
+  background: radial-gradient(ellipse at 50% 115%, #e9f7ff 0%, #bfe3ff 35%, #6fb4ff 75%, #3f8cf5 100%);
+  transition: opacity 0.6s ease;
+}
+.loading.out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Soft drifting clouds. */
+.loading .cloud {
+  position: absolute;
+  width: 260px;
+  height: 80px;
+  border-radius: 999px;
+  background: #fff;
+  opacity: 0.85;
+  filter: blur(1px);
+  box-shadow: 70px -30px 0 6px #fff, 140px -4px 0 -4px #fff;
+  animation: drift 60s linear infinite;
+}
+.loading .c1 {
+  top: 12%;
+  left: -10%;
+}
+.loading .c2 {
+  top: 26%;
+  left: 55%;
+  transform: scale(0.7);
+  animation-duration: 80s;
+  opacity: 0.7;
+}
+.loading .c3 {
+  top: 70%;
+  left: 15%;
+  transform: scale(0.85);
+  animation-duration: 70s;
+  opacity: 0.6;
+}
+@keyframes drift {
+  from {
+    margin-left: -20vw;
+  }
+  to {
+    margin-left: 20vw;
+  }
+}
+
+.loading .center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 16px;
+}
+.loading .logo {
+  font-family: var(--title);
+  font-weight: 800;
+  text-align: center;
+  line-height: 0.92;
+  -webkit-text-stroke: 0.08em #1b2a5c;
+  paint-order: stroke fill;
+  filter: drop-shadow(0 5px 0 rgba(20, 40, 100, 0.35));
+  animation: rise 0.6s ease-out;
+}
+.loading .l1 {
+  font-size: clamp(30px, 6vw, 64px);
+  color: #fff;
+}
+.loading .l2 {
+  font-size: clamp(40px, 8.5vw, 92px);
+  color: #fff;
+}
+.loading .l2 span {
+  color: #ffd21a;
+}
+@keyframes rise {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+}
+
+.loading .hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 4px 0 6px;
+}
+.loading .hero svg {
+  animation: bob 1.1s ease-in-out infinite alternate;
+}
+.loading .hero .shadow {
+  width: 80px;
+  height: 12px;
+  margin-top: 2px;
+  border-radius: 50%;
+  background: rgba(20, 50, 110, 0.25);
+  animation: shadow 1.1s ease-in-out infinite alternate;
+}
+@keyframes bob {
+  from {
+    transform: translateY(0) rotate(-4deg);
+  }
+  to {
+    transform: translateY(-14px) rotate(4deg);
+  }
+}
+@keyframes shadow {
+  to {
+    transform: scaleX(0.75);
+    opacity: 0.6;
+  }
+}
+
+.loading .bar {
+  position: relative;
+  width: min(360px, 78vw);
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 1px 3px rgba(20, 50, 110, 0.25);
+  overflow: hidden;
+}
+.loading .bar .fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffd21a, #ff9a1a);
+  transition: width 0.5s ease;
+}
+.loading .lbl {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1b2a5c;
+  opacity: 0.85;
+}
+.loading .lbl b {
+  margin-left: 6px;
+}
+
+/* Short landscape screens (phones): shrink the title and duck so everything fits. */
+@media (max-height: 460px) {
+  .loading .center {
+    gap: 8px;
+  }
+  .loading .l1 {
+    font-size: clamp(20px, 7vh, 40px);
+  }
+  .loading .l2 {
+    font-size: clamp(28px, 11vh, 60px);
+  }
+  .loading .hero svg {
+    width: 18vh;
+    height: 18vh;
+  }
+}

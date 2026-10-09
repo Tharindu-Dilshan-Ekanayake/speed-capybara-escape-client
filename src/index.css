@@ -1,0 +1,41 @@
+@import 'tailwindcss';
+
+@font-face {
+  font-family: 'Baloo 2';
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url('/fonts/baloo2-latin.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 500 900;
+  font-display: swap;
+  src: url('/fonts/nunito-latin.woff2') format('woff2');
+}
+
+:root {
+  color-scheme: light;
+  --font: 'Nunito', 'Arial Rounded MT Bold', system-ui, sans-serif;
+  --title: 'Baloo 2', 'Fredoka', system-ui, sans-serif;
+  font-family: var(--font);
+  font-weight: 600;
+  -webkit-font-smoothing: antialiased;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #56a6ff;
+  overscroll-behavior: none;
+}
+
+/* The R3F canvas fills its container; the HUD is absolutely positioned over it. */
+canvas {
+  display: block;
+  touch-action: none;
+}
