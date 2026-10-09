@@ -89,7 +89,7 @@ export function CameraRig() {
     // Follow the smoothly drawn position (between physics steps), not the raw one.
     const v = runtime.view || me
     _target.set(v.x, v.y + LOOK_H, v.z)
-    // Pull the camera in front of any wall between it and the duck.
+    // Pull the camera in front of any wall between it and the capybara.
     const dx = Math.sin(yaw) * Math.cos(pitch)
     const dy = Math.sin(pitch)
     const dz = Math.cos(yaw) * Math.cos(pitch)

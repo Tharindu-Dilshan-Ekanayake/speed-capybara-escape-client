@@ -4,7 +4,9 @@ import { play } from '../audio/sfx'
 import { useBloxity } from '../bloxity/BloxityContext'
 import { send } from '../net/net'
 import {
-  DUCKS,
+  CAPYS,
+  GAME_ID,
+  GAME_NAME,
   PACKS,
   SPIN_EVERY_MS,
   boostPrice,
@@ -18,7 +20,7 @@ import {
 } from '../shared/gameData'
 import { packAmount } from '../shared/rules'
 import { runtime, serverNow, useGame } from '../state/store'
-import { DuckIcon, Gear, Gift, Rebirth, Sneaker, Trophy, WheelIcon } from './icons'
+import { CapyIcon, Gear, Gift, MapIcon, Rebirth, Sneaker, Trophy, WheelIcon } from './icons'
 import './hud.css'
 
 /** Re-render on a timer (for countdowns). */
@@ -48,18 +50,20 @@ function useUiScale() {
 }
 
 const MENU = [
+  { id: 'capys', label: 'Capys', key: 'Q', cls: 'c-capy', Icon: CapyIcon },
   { id: 'rebirth', label: 'Rebirth', key: 'R', cls: 'c-reb', Icon: Rebirth },
+  { id: 'stages', label: 'Stages', key: 'T', cls: 'c-stage', Icon: MapIcon },
   { id: 'gifts', label: 'Free', key: 'F', cls: 'c-gift', Icon: Gift },
   { id: 'settings', label: 'Settings', key: 'O', cls: 'c-set', Icon: Gear },
 ]
 export { MENU }
-export const PANEL_SHORTCUTS = { ...Object.fromEntries(MENU.map(({ id, key }) => [key, id])), Q: 'ducks', T: 'stages' }
+export const PANEL_SHORTCUTS = Object.fromEntries(MENU.map(({ id, key }) => [key, id]))
 
 export function invite() {
-  const url = 'https://speed-duck-escape.play.bloxity.io'
+  const url = `https://${GAME_ID}.play.bloxity.io`
   const done = () => useGame.getState().toast('Invite link copied! Friends in your server give +10% Steps each.', 'good')
   if (navigator.share) {
-    navigator.share({ title: '+1 Speed Duck Escape', text: 'Race me in +1 Speed Duck Escape!', url }).catch(() => {})
+    navigator.share({ title: GAME_NAME, text: `Race me in ${GAME_NAME}!`, url }).catch(() => {})
     return
   }
   navigator.clipboard?.writeText(url).then(done, done)
@@ -210,7 +214,7 @@ function Bottom({ profile }) {
   const need = xpForLevel(level)
   const k = Math.max(0, Math.min(1, xp / need))
   const mult = stepMultiplier(profile?.rebirths || 0)
-  const duck = DUCKS.find((d) => d.id === profile?.duck) || DUCKS[0]
+  const capy = CAPYS.find((d) => d.id === profile?.capy) || CAPYS[0]
   return (
     <div className="corner bc">
       {prompt && (
@@ -227,13 +231,13 @@ function Bottom({ profile }) {
           <div className="fill" style={{ width: `${k * 100}%` }} />
           <div className="walkers" style={{ left: `${Math.max(12, k * 100)}%` }}>
             <span>
-              <DuckIcon size={26} body={duck.body} beak={duck.beak} />
+              <CapyIcon size={26} fur={capy.fur} nose={capy.nose} />
             </span>
             <span>
-              <DuckIcon size={30} body={duck.body} beak={duck.beak} />
+              <CapyIcon size={30} fur={capy.fur} nose={capy.nose} />
             </span>
             <span>
-              <DuckIcon size={46} body={duck.body} beak={duck.beak} glow={duck.fx?.glow} />
+              <CapyIcon size={46} fur={capy.fur} nose={capy.nose} glow={capy.fx?.glow} yuzu={!!capy.fx?.yuzu} />
             </span>
           </div>
           <div className="txt ol">
@@ -281,9 +285,26 @@ function Big() {
   return (
     <div key={big.id} className={`big ${big.kind}`}>
       <div className="band">
-        <div className={`txt ${big.kind === 'warn' || big.kind === 'rebirth' || big.kind === 'duck' ? '' : 'gold'}`}>{big.text}</div>
+        <div className={`txt ${big.kind === 'warn' || big.kind === 'rebirth' || big.kind === 'capy' ? '' : 'gold'}`}>{big.text}</div>
         {big.sub && <div className="sub2 ol">{big.sub}</div>}
       </div>
+    </div>
+  )
+}
+
+/** First-run guide, like the classic speed sims: treadmill first, then the first stage. */
+function Hint({ profile }) {
+  const region = useGame((s) => s.region)
+  const panel = useGame((s) => s.panel)
+  if (!profile || panel || (profile.totalWins || 0) > 0) return null
+  // The HUD re-renders a few times a second, so reading the per-frame runtime is fine here.
+  let text = null
+  if (region.stage === 0 && profile.level < 3) text = runtime.onTread ? 'Nice! Steps are flowing in - level up!' : 'Walk onto the Treadmill!'
+  else if (region.stage <= 1) text = 'Cross the bridges to the golden pad and press E!'
+  if (!text) return null
+  return (
+    <div className="hint" role="status">
+      <span>{text}</span>
     </div>
   )
 }
@@ -311,6 +332,7 @@ export function HUD() {
       <LeftSide profile={profile} />
       <TopRight profile={profile} now={now} />
       <Bottom profile={profile} />
+      <Hint profile={profile} />
       <Toasts />
       <Big />
     </div>

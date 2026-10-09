@@ -1,10 +1,10 @@
 import { memo, useLayoutEffect, useMemo, useRef } from 'react'
 import { Color, MeshStandardMaterial, Object3D } from 'three'
 
-import { flowerGeometry, rockGeometry, treeGeometries } from './geometry'
+import { flowerGeometry, palmGeometries, rockGeometry, treeGeometries } from './geometry'
 
 /**
- * Instanced canyon cliffs, trees and flowers for one region (one draw call per set).
+ * Instanced cliffs, trees (or jungle palms) and flowers for one region (one draw call per set).
  */
 
 const rockGeoCache = new Map()
@@ -15,6 +15,7 @@ function rockGeo(variant, theme) {
 }
 
 let trees = null
+let palms = null
 let flowers = null
 const vcMat = new MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.85 })
 const canopyMaterials = new Map()
@@ -79,7 +80,9 @@ const placeFlower = (o, f) => {
 
 export const Nature = memo(function Nature({ rocks = [], trees: treeList = [], flowers: flowerList = [], theme }) {
   if (!trees) trees = treeGeometries()
+  if (!palms) palms = palmGeometries()
   if (!flowers) flowers = flowerGeometry()
+  const tree = theme.palms ? palms : trees
   const byVariant = useMemo(() => [0, 1, 2].map((v) => rocks.filter((r) => r.v === v)), [rocks])
   const canopyColor = useMemo(() => (t) => theme.canopy[t.c % theme.canopy.length], [theme])
   const flowerColor = useMemo(() => (f) => FLOWER_COLORS[f.c % FLOWER_COLORS.length], [])
@@ -89,8 +92,8 @@ export const Nature = memo(function Nature({ rocks = [], trees: treeList = [], f
       {byVariant.map((list, v) => (
         <Instanced key={v} geometry={rockGeo(v, theme)} material={vcMat} items={list} place={placeRock} />
       ))}
-      <Instanced geometry={trees.trunk} material={vcMat} items={treeList} place={placeTree} />
-      <Instanced geometry={trees.canopy} material={canopyMat} items={treeList} place={placeTree} color={canopyColor} />
+      <Instanced geometry={tree.trunk} material={vcMat} items={treeList} place={placeTree} />
+      <Instanced geometry={tree.canopy} material={canopyMat} items={treeList} place={placeTree} color={canopyColor} />
       <Instanced geometry={flowers.stems} material={vcMat} items={flowerList} place={placeFlower} castShadow={false} />
       <Instanced geometry={flowers.head} material={canopyMat} items={flowerList} place={placeFlower} color={flowerColor} castShadow={false} />
     </>

@@ -123,7 +123,7 @@ export const liquidTexture = (kind) =>
   cached(`liquid-${kind}`, () => {
     const s = 512
     const [c, g] = canvas(s)
-    const base = { water: '#2fe2ff', lava: '#ff4a0a', toxic: '#7dff1a' }[kind] || '#2fe2ff'
+    const base = { water: '#2fe2ff', lava: '#ff4a0a', toxic: '#7dff1a', swamp: '#4fae3a', spring: '#8ff0ff' }[kind] || '#2fe2ff'
     g.fillStyle = base
     g.fillRect(0, 0, s, s)
     for (let i = 0; i < 70; i += 1) {

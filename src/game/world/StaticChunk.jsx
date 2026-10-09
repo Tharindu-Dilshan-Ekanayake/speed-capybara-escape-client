@@ -21,12 +21,28 @@ function cylGeo(x, y, z, r, h, seg = 28) {
   return g
 }
 
-/** Visual parts for a cylinder entry (islands get a grass cap, mushrooms get spots). */
+/** Visual parts for a cylinder entry (islands get a grass cap, yuzu get a citrus slice). */
 function cylinderParts(c) {
   const out = []
   if (c.island) {
     out.push({ c: '#3fcf2c', m: 'stud', geo: cylGeo(c.x, c.top - 0.35, c.z, c.r, 0.7, 36) })
     out.push({ c: '#a8622e', m: 'stud', geo: cylGeo(c.x, c.top - 0.7 - (c.h - 0.7) / 2, c.z, c.r - 0.15, c.h - 0.7, 36) })
+  } else if (c.citrus) {
+    // A giant yuzu half: orange peel, pale pith ring, juicy segments.
+    out.push({ c: c.c, m: 'smooth', geo: cylGeo(c.x, c.top - c.h / 2, c.z, c.r, c.h, 36) })
+    const dome = new SphereGeometry(c.r, 32, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2)
+    dome.scale(1, 0.45, 1)
+    dome.translate(c.x, c.top - c.h, c.z)
+    out.push({ c: c.c, m: 'smooth', geo: dome })
+    out.push({ c: '#fff3c8', m: 'smooth', geo: cylGeo(c.x, c.top + 0.01, c.z, c.r * 0.9, 0.02, 36) })
+    out.push({ c: '#ffc23a', m: 'smooth', geo: cylGeo(c.x, c.top + 0.025, c.z, c.r * 0.8, 0.02, 36) })
+    for (let i = 0; i < 8; i += 1) {
+      const a = (i / 8) * Math.PI
+      const seg = new BoxGeometry(c.r * 1.6, 0.02, 0.07)
+      seg.rotateY(a)
+      seg.translate(c.x, c.top + 0.04, c.z)
+      out.push({ c: '#fff3c8', m: 'smooth', geo: seg })
+    }
   } else if (c.mushroom) {
     out.push({ c: c.c, m: 'smooth', geo: cylGeo(c.x, c.top - c.h / 2, c.z, c.r, c.h, 36) })
     const dome = new SphereGeometry(c.r, 32, 12, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2)
@@ -97,7 +113,7 @@ export const StaticChunk = memo(function StaticChunk({ boxes = [], cyls = [], pl
         <mesh key={m.key} geometry={m.geometry} material={m.material} castShadow={castShadow && !m.glow} receiveShadow={!m.glow} />
       ))}
       {planeMeshes.map(({ key, geometry, material, p }) => (
-        <mesh key={key} geometry={geometry} material={material} position={[p.x, p.y, p.z]} receiveShadow={p.kind === 'ground'} renderOrder={p.kind === 'water' ? 3 : 0} />
+        <mesh key={key} geometry={geometry} material={material} position={[p.x, p.y, p.z]} receiveShadow={p.kind === 'ground'} renderOrder={p.kind === 'water' || p.kind === 'swamp' || p.kind === 'spring' ? 3 : 0} />
       ))}
     </>
   )

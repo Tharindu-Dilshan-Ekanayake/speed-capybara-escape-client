@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { play } from '../audio/sfx'
 import { useBloxityStore } from '../bloxity/store'
 import { send } from '../net/net'
-import { lobbySpawn, onPad, regionAt, STAGES, treadAt } from '../shared/course'
-import { STEP_DISTANCE, TREADMILL_STEPS, speedStat, stageLevel, treadById, velocityFor, worldFirst } from '../shared/gameData'
+import { lobbySpawn, regionAt, STAGES, treadAt } from '../shared/course'
+import { STEP_DISTANCE, TREADMILL_STEPS, speedStat, stageLevel, treadById, velocityFor } from '../shared/gameData'
 import { xpPerStep } from '../shared/rules'
 import { runtime, serverNow, useGame, worldTime } from '../state/store'
 import { dynBox, sinkExpired } from './dynamics'
@@ -18,7 +18,7 @@ import Rider, { newMotion } from './Rider'
 /** Position updates per second sent to the server (others see you through these). */
 const SEND_EVERY = 1 / 15
 /**
- * Physics runs in fixed 120 Hz steps and the duck is drawn between the last two steps.
+ * Physics runs in fixed 120 Hz steps and the capybara is drawn between the last two steps.
  * Frame times always wobble a little; this keeps the motion perfectly even anyway.
  */
 const FIXED = 1 / 120
@@ -37,13 +37,14 @@ function dynNear(stage) {
   return dynCache.get(stage)
 }
 
+const WET = new Set(['water', 'swamp', 'spring'])
 function killCauseFor(S) {
-  const kind = S?.planes?.find((p) => p.kind === 'water' || p.kind === 'lava' || p.kind === 'toxic')?.kind
-  return kind === 'water' ? 'splash' : kind ? 'burn' : 'fall'
+  const kind = S?.planes?.find((p) => WET.has(p.kind) || p.kind === 'lava' || p.kind === 'toxic')?.kind
+  return WET.has(kind) ? 'splash' : kind ? 'burn' : 'fall'
 }
 
-const DEATH_SFX = { splash: 'splash', wave: 'splash', zap: 'zap', burn: 'burn', fall: 'fall' }
-const DEATH_COLOR = { splash: '#7ff0ff', wave: '#7ff0ff', zap: '#ff3a4a', burn: '#ff8a1a', fall: '#ffffff' }
+const DEATH_SFX = { splash: 'splash', wave: 'splash', zap: 'zap', burn: 'burn', fall: 'fall', bonk: 'bonk' }
+const DEATH_COLOR = { splash: '#7ff0ff', wave: '#7ff0ff', zap: '#ff3a4a', burn: '#ff8a1a', fall: '#ffffff', bonk: '#8a5a33' }
 
 function resetHazards() {
   runtime.hazards.sinks.clear()
@@ -57,12 +58,12 @@ export function LocalPlayer() {
   const footTrail = useMemo(() => new FootprintTrail('me'), [])
   const equipped = useBloxityStore((s) => s.equipped)
   const proportions = useBloxityStore((s) => s.proportions)
-  const duck = useGame((s) => s.profile?.duck || 'rubber')
+  const capy = useGame((s) => s.profile?.capy || 'classic')
 
   const pl = useMemo(() => {
     buildCollision()
     // Reuse the existing body if the canvas remounts (e.g. a graphics-quality change).
-    const p = runtime.me || createPlayer(lobbySpawn(1))
+    const p = runtime.me || createPlayer(lobbySpawn())
     runtime.me = p
     return p
   }, [])
@@ -155,7 +156,7 @@ export function LocalPlayer() {
       play(DEATH_SFX[cause] || 'fall')
       runtime.bursts.push({ kind: 'poof', x: pl.x, y: pl.y + 1, z: pl.z, at: performance.now(), color: DEATH_COLOR[cause] })
       // Falling / getting caught in a stage sends you back to the lobby.
-      const spawn = lobbySpawn(reg.world)
+      const spawn = lobbySpawn()
       placePlayer(pl, spawn)
       snapView()
       resetHazards()
@@ -166,6 +167,7 @@ export function LocalPlayer() {
       s.prevStage = -1
       send('respawn', { stage: 0 })
       if (cause === 'wave') g.toast('The tsunami got you! Run faster - level up for more Speed.', 'warn')
+
     }
 
     const ctl = { dirX: fx * inp.fwd + rx * inp.right, dirZ: fz * inp.fwd + rz * inp.right, speed, jump: inp.jump }
@@ -251,34 +253,28 @@ export function LocalPlayer() {
     const reg2 = regionAt(pl.x, pl.z)
     if (reg2.stage !== s.region.stage || reg2.world !== s.region.world) {
       const prev = s.prevStage
-      const first = worldFirst(reg2.world)
       if (reg2.stage > 0) {
-        const forward = prev === -1 || prev === reg2.stage - 1 || (prev === 0 && reg2.stage === first)
+        const forward = prev === -1 || prev === reg2.stage - 1
         s.run = { stage: reg2.stage, sent: !forward }
       } else s.run = null
       s.region = reg2
       s.prevStage = reg2.stage
       useGame.setState({ region: reg2 })
     }
-    const S2 = reg2.stage ? STAGES[reg2.stage] : null
-    if (S2 && s.run && !s.run.sent && pl.grounded && onPad(S2.n, pl.x, pl.z, 0.1)) {
-      s.run.sent = true
-      send('pad', { stage: S2.n })
-    }
 
     // ---- Locked gate ahead? Tell the player what they need. ----
-    const nextN = reg2.stage === 0 ? worldFirst(reg2.world) : reg2.stage + 1
-    const G = STAGES[nextN]?.world === reg2.world ? STAGES[nextN].gate : null
+    const nextN = reg2.stage + 1
+    const G = STAGES[nextN]?.gate || null
     if (G && prof && prof.level < G.req && Math.abs(pl.x - G.x) < G.w / 2 + 1 && pl.z - G.z < 3.5 && pl.z - G.z > -1.6 && now - (s.gateHint || 0) > 4) {
       s.gateHint = now
       g.showBig({ kind: 'warn', text: `LEVEL ${stageLevel(nextN)} NEEDED`, sub: 'Train on the treadmills to level up!', ms: 1800 })
       play('error')
     }
 
-    // ---- Steps: walking and treadmills both "waddle" ----
+    // ---- Steps: walking and treadmills both count ----
     let onTread = null
     if (reg2.stage === 0 && pl.grounded && prof) {
-      const t = treadAt(reg2.world, pl.x, pl.z)
+      const t = treadAt(pl.x, pl.z)
       if (t && prof.treads.includes(t.id)) onTread = t
     }
     const per = prof ? xpPerStep(prof, Math.max(0, g.friends - 1)) : 1
@@ -318,11 +314,11 @@ export function LocalPlayer() {
     footTrail.step({
       x: pl.x, y: pl.y, z: pl.z, yaw: s.facing, now,
       grounded: pl.grounded && hs > 0.15 && !onTread && !died && !!prof, teleported,
-      duck, level: prof?.level || 1, support,
+      capy, level: prof?.level || 1, support,
       supportPose: supportBox ? { x: (supportBox.minX + supportBox.maxX) / 2, y: (supportBox.minY + supportBox.maxY) / 2, z: (supportBox.minZ + supportBox.maxZ) / 2 } : null,
     })
     mo.time += dt
-    // Ease the waddle amount and advance the stride phase smoothly.
+    // Ease the trot amount and advance the stride phase smoothly.
     const ratioTarget = onTread ? 1 : Math.min(1, hs / Math.max(4, speed * 0.85))
     mo.ratio += (ratioTarget - mo.ratio) * (1 - Math.exp(-dt * 12))
     mo.phase += dt * (7 + mo.ratio * 7)
@@ -347,7 +343,7 @@ export function LocalPlayer() {
     s.promptT += dt
     if (s.promptT > 0.12) {
       s.promptT = 0
-      const pr = findPrompt(pl.x, pl.z, reg2.world, prof)
+      const pr = findPrompt(pl.x, pl.z, prof)
       if ((pr?.key || null) !== (g.prompt?.key || null)) useGame.setState({ prompt: pr })
     }
 
@@ -363,7 +359,7 @@ export function LocalPlayer() {
 
   return (
     <group ref={group}>
-      <Rider duck={duck} equipped={equipped} proportions={proportions} motionRef={motion} onReady={onReady} />
+      <Rider capy={capy} equipped={equipped} proportions={proportions} motionRef={motion} onReady={onReady} />
     </group>
   )
 }

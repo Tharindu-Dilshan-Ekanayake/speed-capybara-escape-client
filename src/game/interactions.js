@@ -1,40 +1,40 @@
 import { play } from '../audio/sfx'
 import { send } from '../net/net'
-import { LOBBIES, STAGES } from '../shared/course'
-import { DUCKS, TREADMILLS, WORLD2_REBIRTHS, formatNum } from '../shared/gameData'
+import { LOBBY, onPad, regionAt, STAGES } from '../shared/course'
+import { STAGE_WINS, winMultiplier } from '../shared/gameData'
+import { CAPYS, TREADMILLS, formatNum } from '../shared/gameData'
 import { useGame } from '../state/store'
 
 /**
- * Everything you can walk up to and press E on: duck pedestals, treadmills, the lucky
- * wheel, world portals and the end-of-world teleporters.
+ * Everything you can walk up to and press E on: capybara pads, treadmills, the lucky
+ * wheel and the Golden Temple teleporter home.
  */
 
 const SPOTS = []
-for (const w of [1, 2]) {
-  const L = LOBBIES[w]
-  for (const p of L.pedestals) SPOTS.push({ type: 'duck', id: p.id, x: p.x, z: p.z, r: 3, world: w })
-  for (const t of L.treads) SPOTS.push({ type: 'tread', id: t.id, x: t.x, z: t.z, r: 4.6, world: w, t })
-  SPOTS.push({ type: 'wheel', x: L.wheel.x + 2.5, z: L.wheel.z, r: 7, world: w })
-  const facing = L.portal.ry || 0
-  SPOTS.push({ type: 'portal', to: L.portal.to, x: L.portal.x + Math.sin(facing) * 1.3, z: L.portal.z + Math.cos(facing) * 1.3, doorX: L.portal.x, doorZ: L.portal.z, facing, r: 4.5, world: w })
-}
+for (const p of LOBBY.pedestals) SPOTS.push({ type: 'capy', id: p.id, x: p.x, z: p.z, r: 2.4 })
+for (const t of LOBBY.treads) SPOTS.push({ type: 'tread', id: t.id, x: t.x, z: t.z, r: 4.6, t })
+SPOTS.push({ type: 'wheel', x: LOBBY.wheel.x + 2.5, z: LOBBY.wheel.z, r: 6 })
 for (let n = 1; n < STAGES.length; n += 1) {
   for (const pr of STAGES[n].props) {
-    if (pr.type === 'worldGate') SPOTS.push({ type: 'portal', to: 2, x: pr.x, z: pr.z + 1.3, doorX: pr.x, doorZ: pr.z, facing: 0, r: 4.5, world: 1 })
-    if (pr.type === 'teleporter') SPOTS.push({ type: 'home', x: pr.x, z: pr.z, r: 3, world: STAGES[n].world })
+    if (pr.type === 'teleporter') SPOTS.push({ type: 'home', x: pr.x, z: pr.z, r: 3 })
   }
 }
 
-const duckDef = (id) => DUCKS.find((d) => d.id === id)
+const capyDef = (id) => CAPYS.find((d) => d.id === id)
 const treadDef = (id) => TREADMILLS.find((t) => t.id === id)
 
 /** Prompt for the nearest spot, or null. */
-export function findPrompt(x, z, world, profile) {
+export function findPrompt(x, z, profile) {
   if (!profile) return null
+  // Standing on a golden wins pad: press E to cash out.
+  const reg = regionAt(x, z)
+  if (reg.stage > 0 && onPad(reg.stage, x, z, 0.5)) {
+    const wins = Math.round(STAGE_WINS[reg.stage] * winMultiplier(profile.rebirths))
+    return { key: `pad-${reg.stage}-${wins}`, title: 'Claim Wins!', sub: `+${wins} Wins - back to the lobby`, action: () => send('pad', { stage: reg.stage }) }
+  }
   let best = null
   let bestD = Infinity
   for (const s of SPOTS) {
-    if (s.world !== world) continue
     const d = s.type === 'tread' ? (Math.abs(x - s.x) < s.t.w / 2 + 1.2 && Math.abs(z - s.z) < s.t.l / 2 + 1.2 ? 0 : Infinity) : Math.hypot(x - s.x, z - s.z)
     if (d < s.r && d < bestD) {
       best = s
@@ -47,26 +47,26 @@ export function findPrompt(x, z, world, profile) {
 
 function describe(s, p) {
   switch (s.type) {
-    case 'duck': {
-      const d = duckDef(s.id)
-      const owned = p.ducks.includes(d.id)
-      if (p.duck === d.id) return { key: `duck-${d.id}-eq`, title: `${d.name}`, sub: 'Equipped!', done: true }
-      if (owned) return { key: `duck-${d.id}-own`, title: `Equip ${d.name}`, sub: `+${formatNum(d.perStep)} / Step`, action: () => send('duck', { id: d.id }) }
-      if (d.wheel) return { key: `duck-${d.id}-wheel`, title: d.name, sub: 'Win it on the Lucky Wheel!', done: true }
-      if (p.rebirths < d.reb) return { key: `duck-${d.id}-reb`, title: d.name, sub: `Needs ${d.reb} Rebirths`, locked: true }
+    case 'capy': {
+      const d = capyDef(s.id)
+      const owned = p.capys.includes(d.id)
+      if (p.capy === d.id) return { key: `capy-${d.id}-eq`, title: `${d.name}`, sub: 'Riding this one!', done: true }
+      if (owned) return { key: `capy-${d.id}-own`, title: `Ride ${d.name}`, sub: `+${formatNum(d.perStep)} / Step`, action: () => send('capy', { id: d.id }) }
+      if (d.wheel) return { key: `capy-${d.id}-wheel`, title: d.name, sub: 'Win it on the Lucky Wheel!', done: true }
+      if (p.rebirths < d.reb) return { key: `capy-${d.id}-reb`, title: d.name, sub: `Needs ${d.reb} Rebirth${d.reb === 1 ? '' : 's'}`, locked: true }
       return {
-        key: `duck-${d.id}-buy${p.wins >= d.cost}`,
+        key: `capy-${d.id}-buy${p.wins >= d.cost}`,
         title: `Buy ${d.name}`,
         sub: `${formatNum(d.cost)} Wins  -  +${formatNum(d.perStep)} / Step`,
         cost: d.cost,
         locked: p.wins < d.cost,
-        action: () => send('duck', { id: d.id }),
+        action: () => send('capy', { id: d.id }),
       }
     }
     case 'tread': {
       const t = treadDef(s.id)
       if (p.treads.includes(t.id)) return null
-      if (p.rebirths < t.reb) return { key: `tread-${t.id}-reb`, title: `${t.mult}X Treadmill`, sub: `Needs ${t.reb} Rebirths`, locked: true }
+      if (p.rebirths < t.reb) return { key: `tread-${t.id}-reb`, title: `${t.mult}X Treadmill`, sub: `Needs ${t.reb} Rebirth${t.reb === 1 ? '' : 's'}`, locked: true }
       return {
         key: `tread-${t.id}-${p.wins >= t.cost}`,
         title: `Buy ${t.mult}X Treadmill`,
@@ -86,23 +86,9 @@ function describe(s, p) {
           useGame.getState().setPanel('wheel')
         },
       }
-    case 'portal':
-      if (s.to === 2 && p.rebirths < WORLD2_REBIRTHS) {
-        return { key: 'portal-locked', title: 'World 2', sub: `Needs ${WORLD2_REBIRTHS} Rebirths`, locked: true }
-      }
-      return { key: `portal-${s.to}`, title: s.to === 2 ? 'Enter World 2' : 'Back to World 1', sub: 'Teleport', action: () => send('tp', { to: s.to === 2 ? 'w2' : 'w1' }) }
     case 'home':
       return { key: 'home', title: 'Back to Lobby', sub: 'Teleport', action: () => send('tp', { to: 'lobby' }) }
     default:
       return null
   }
-}
-
-/** Distance-based auto-portal (walking into a portal ring teleports you). */
-export function portalAt(x, z, world) {
-  for (const s of SPOTS) {
-    if (s.type !== 'portal' || s.world !== world) continue
-    if (Math.hypot(x - (s.doorX + Math.sin(s.facing) * 0.6), z - (s.doorZ + Math.cos(s.facing) * 0.6)) < 1.4) return s
-  }
-  return null
 }

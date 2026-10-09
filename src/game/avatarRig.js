@@ -387,8 +387,8 @@ export function animateRig(rig, motion) {
 }
 
 /**
- * Pose for riding inside the duck: legs folded forward out of sight, arms paddling
- * while waddling, thrown up while airborne, resting on the duck when idle.
+ * Pose for riding the capybara: legs folded forward out of sight, arms pumping
+ * while trotting, thrown up while airborne, resting on the handle when idle.
  *
  * @param {object} rig from `collectRig`
  * @param {{ time: number, ratio: number, grounded: boolean, jumpT: number }} motion
@@ -421,7 +421,7 @@ export function poseRider(rig, motion) {
     return
   }
 
-  // Seated in the saddle like a jockey: thighs forward around the duck's body, shins
+  // Seated in the saddle like a jockey: thighs forward around the capybara's body, shins
   // hanging down its sides, feet bobbing with the waddle.
   // Thighs flat along the back and shins down inside the body (like riding in Fly
   // Evolve): from outside you see one solid rider, never loose legs.
@@ -431,7 +431,7 @@ export function poseRider(rig, motion) {
   sway(rig, 'LegR1', 0.12)
   swing(rig, 'LegL2', 1.45)
   swing(rig, 'LegR2', 1.45)
-  // Hands on the handle on the duck's neck; elbows soften with the bounce.
+  // Hands on the handle in front of the saddle; elbows soften with the bounce.
   const grip = -1.05 - bob * 0.05 * ratio
   swing(rig, 'ArmL1', grip)
   swing(rig, 'ArmR1', grip)

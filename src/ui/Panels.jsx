@@ -3,25 +3,24 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { play, setMusic, setSfx } from '../audio/sfx'
 import { send } from '../net/net'
 import {
-  DUCKS,
+  CAPYS,
   GIFTS,
   STAGE_COUNT,
   STAGE_NAMES,
   STAGE_WINS,
   WHEEL,
-  WORLD2_REBIRTHS,
+  capyById,
   formatNum,
   formatTime,
   giftWins,
   rebirthLevel,
   speedStat,
   stageLevel,
-  stageWorld,
   stepMultiplier,
   winMultiplier,
 } from '../shared/gameData'
 import { useGame } from '../state/store'
-import { Bolt, CloseX, DuckIcon, Gear, Gift, Lock, MapIcon, Rebirth, Sneaker, Trophy, WheelIcon } from './icons'
+import { Bolt, CapyIcon, CloseX, Gear, Gift, Lock, MapIcon, Rebirth, Sneaker, Trophy, WheelIcon } from './icons'
 
 function Panel({ title, subtitle, icon: Icon, theme = 'blue', children, width }) {
   const close = useGame((s) => s.closePanel)
@@ -68,7 +67,7 @@ function Panel({ title, subtitle, icon: Icon, theme = 'blue', children, width })
         }}
       >
         <header className="panel-head">
-          <div className="panel-icon" aria-hidden="true">{Icon ? <Icon size={48} /> : <DuckIcon size={48} />}</div>
+          <div className="panel-icon" aria-hidden="true">{Icon ? <Icon size={48} /> : <CapyIcon size={48} />}</div>
           <div className="panel-heading">
             <h2 id={titleId}>{title}</h2>
             {subtitle && <p id={`${titleId}-sub`}>{subtitle}</p>}
@@ -127,8 +126,13 @@ function RebirthPanel({ p }) {
           <small>Current: x{winMultiplier(p.rebirths)}</small>
         </div>
       </div>
-      {p.rebirths + 1 === WORLD2_REBIRTHS && <div className="unlock-note"><MapIcon size={28} />World 2 unlocks with this rebirth!</div>}
-      <p className="panel-note">Resets your Level &amp; Speed. You keep your Wins, Ducks and Treadmills.</p>
+      {CAPYS.some((d) => d.reb === p.rebirths + 1) && (
+        <div className="unlock-note">
+          <CapyIcon size={28} />
+          Unlocks the {CAPYS.find((d) => d.reb === p.rebirths + 1).name}!
+        </div>
+      )}
+      <p className="panel-note">Resets your Level &amp; Speed. You keep your Wins, Capybaras and Treadmills.</p>
       <div className="panel-action">
         <button
           type="button"
@@ -146,21 +150,21 @@ function RebirthPanel({ p }) {
   )
 }
 
-/* ---- Ducks inventory ---------------------------------------------------- */
-function DucksPanel({ p }) {
+/* ---- Capybara inventory ---------------------------------------------------- */
+function CapysPanel({ p }) {
   return (
-    <Panel title="Ducks" subtitle="Find your favourite waddling companion." icon={DuckIcon} theme="gifts">
+    <Panel title="Capybaras" subtitle="Pick your chillest riding buddy." icon={CapyIcon} theme="gifts">
       <div className="r-sub" style={{ marginBottom: 10, fontSize: 16 }}>
-        Buy ducks at the red pads in the lobby (walk up &amp; press E). Every duck you own can be equipped here.
+        Buy capybaras at the red pads in the lobby (walk up &amp; press E). Every capybara you own can be ridden from here.
       </div>
       <div className="grid">
-        {DUCKS.map((d) => {
-          const owned = p.ducks.includes(d.id)
-          const eq = p.duck === d.id
+        {CAPYS.map((d) => {
+          const owned = p.capys.includes(d.id)
+          const eq = p.capy === d.id
           const locked = !owned && p.rebirths < d.reb
           return (
             <div key={d.id} className={`card ${owned ? 'owned' : ''} ${eq ? 'eq' : ''} ${locked ? 'locked' : ''}`}>
-              <DuckIcon size={74} body={d.body} beak={d.beak} glow={d.fx?.glow} />
+              <CapyIcon size={74} fur={d.fur} nose={d.nose} glow={d.fx?.glow} yuzu={!!d.fx?.yuzu} />
               <div className="t ol">{d.name}</div>
               <div className="s ol">+{formatNum(d.perStep)} / Step</div>
               {owned ? (
@@ -172,7 +176,7 @@ function DucksPanel({ p }) {
                     send('equip', { id: d.id })
                   }}
                 >
-                  {eq ? 'Equipped' : 'Equip'}
+                  {eq ? 'Riding' : 'Ride'}
                 </button>
               ) : (
                 <div className="s ol" style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#fff' }}>
@@ -180,11 +184,11 @@ function DucksPanel({ p }) {
                     'Lucky Wheel only!'
                   ) : locked ? (
                     <>
-                      <Lock size={20} /> {d.reb} Rebirths
+                      <Lock size={20} /> {d.reb} Rebirth{d.reb === 1 ? '' : 's'}
                     </>
                   ) : (
                     <>
-                      {formatNum(d.cost)} <Trophy size={20} /> • World {d.world}
+                      {formatNum(d.cost)} <Trophy size={20} />
                     </>
                   )}
                 </div>
@@ -199,27 +203,22 @@ function DucksPanel({ p }) {
 
 /* ---- Stages: what each one pays and needs (runs always start in the lobby) ---- */
 function StagesPanel({ p }) {
-  const tp = (to) => {
-    send('tp', { to })
+  const home = () => {
+    send('tp', { to: 'lobby' })
     useGame.getState().closePanel()
   }
-  const w2 = p.rebirths >= WORLD2_REBIRTHS
   return (
-    <Panel title="Stages" subtitle="Explore the course and your next challenge." icon={MapIcon}>
+    <Panel title="Stages" subtitle="Twenty jungle stages between you and freedom." icon={MapIcon}>
       <div className="r-sub" style={{ marginBottom: 10 }}>
         Every run starts in the lobby. Touch a wins pad to cash out and go back - or keep running to a later stage for far more Wins. Each gate needs a higher Level.
       </div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <button className="gbtn blue" onClick={() => tp('w1')}>
-          World 1 Lobby
-        </button>
-        <button className="gbtn blue" disabled={!w2} onClick={() => tp('w2')}>
-          {w2 ? 'World 2 Lobby' : `World 2 (${WORLD2_REBIRTHS} Rebirths)`}
+        <button className="gbtn blue" onClick={home}>
+          Back to Lobby
         </button>
       </div>
       {Array.from({ length: STAGE_COUNT }, (_, i) => i + 1).map((n) => {
-        const worldOk = stageWorld(n) === 1 || w2
-        const open = n <= p.maxStage && worldOk
+        const open = n <= p.maxStage
         return (
           <div key={n} className="row" style={{ opacity: open ? 1 : 0.6 }}>
             <div>
@@ -227,14 +226,10 @@ function StagesPanel({ p }) {
                 Stage {n} • {STAGE_NAMES[n]}
               </div>
               <div className="r-sub" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                World {stageWorld(n)} • +{formatNum(Math.round(STAGE_WINS[n] * winMultiplier(p.rebirths)))} <Trophy size={16} />
+                +{formatNum(Math.round(STAGE_WINS[n] * winMultiplier(p.rebirths)))} <Trophy size={16} />
               </div>
             </div>
-            {!worldOk ? (
-              <span className="ol" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16 }}>
-                <Lock size={22} /> {WORLD2_REBIRTHS} Rebirths
-              </span>
-            ) : p.level < stageLevel(n) ? (
+            {p.level < stageLevel(n) ? (
               <span className="ol" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, color: '#b54d5e' }}>
                 <Lock size={22} /> Level {stageLevel(n)} • Speed {speedStat(stageLevel(n))}
               </span>
@@ -317,7 +312,7 @@ function SettingsPanel() {
       <div className="row" style={{ flexDirection: 'column', alignItems: 'flex-start', fontSize: 16 }}>
         <div className="ol">Controls</div>
         <div className="r-sub">W / S - run • A / D - turn camera • Space - jump (hold to keep hopping) • Drag - turn camera • Wheel - zoom</div>
-        <div className="r-sub">E - buy / equip / spin • R Rebirth • Q Ducks • T Stages • F Free gifts • O Settings • Esc close</div>
+        <div className="r-sub">E - buy / ride / spin • Q Capybaras • R Rebirth • T Stages • F Free gifts • O Settings • Esc close</div>
       </div>
     </Panel>
   )
@@ -394,8 +389,8 @@ function WheelPanel({ p }) {
       clearInterval(tickTimer.current)
       setSpinning(false)
       setResult(wheel.reward)
-      play(wheel.reward.duck ? 'quack' : 'wheelWin')
-      if (wheel.reward.duck) useGame.getState().showBig({ kind: 'duck', text: 'LUCKY DUCK!', sub: '+4K / Step - equipped!', ms: 3000 })
+      play(wheel.reward.capy ? 'squeak' : 'wheelWin')
+      if (wheel.reward.capy) useGame.getState().showBig({ kind: 'capy', text: 'LUCKY CAPY!', sub: `+${formatNum(capyById(wheel.reward.capy).perStep)} / Step - you're riding it!`, ms: 3000 })
     }, 4100)
     return () => {
       clearInterval(tickTimer.current)
@@ -436,7 +431,7 @@ function WheelPanel({ p }) {
           {spinning ? 'Spinning…' : p.spins < 1 ? 'No spins' : 'SPIN!'}
         </button>
         <div className="r-sub" style={{ marginTop: 10 }}>
-          You get a free spin every 10 minutes. The ??? slice is the exclusive Lucky Duck!
+          You get a free spin every 10 minutes. The ??? slice is the exclusive Lucky Capy!
         </div>
       </div>
     </Panel>
@@ -450,8 +445,8 @@ export function Panels() {
   switch (panel) {
     case 'rebirth':
       return <RebirthPanel p={p} />
-    case 'ducks':
-      return <DucksPanel p={p} />
+    case 'capys':
+      return <CapysPanel p={p} />
     case 'stages':
       return <StagesPanel p={p} />
     case 'settings':

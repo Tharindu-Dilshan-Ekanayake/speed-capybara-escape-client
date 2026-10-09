@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   BoxGeometry,
+  CanvasTexture,
   Color,
   ConeGeometry,
   CylinderGeometry,
@@ -10,6 +11,8 @@ import {
   Object3D,
   RingGeometry,
   SphereGeometry,
+  SRGBColorSpace,
+  TorusGeometry,
 } from 'three'
 
 import { STAGES } from '../../shared/course'
@@ -44,6 +47,39 @@ const rope = new MeshStandardMaterial({ color: '#c9a46a', roughness: 0.9 })
 const rock = new MeshStandardMaterial({ color: '#8d8478', roughness: 0.95, flatShading: true })
 const ghostMat = new MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.12, depthWrite: false })
 const meteorMat = new MeshStandardMaterial({ color: '#5a2a1a', emissive: '#ff5a00', emissiveIntensity: 1.2, flatShading: true })
+const coconutMat = new MeshStandardMaterial({ color: '#6b4226', roughness: 0.95, flatShading: true })
+const ballMat = new MeshStandardMaterial({ color: '#ffffff', roughness: 0.18, metalness: 0.15 })
+const snowMat = new MeshStandardMaterial({ color: '#ffffff', roughness: 0.8, emissive: '#cfe8ff', emissiveIntensity: 0.15 })
+const bandMat = new MeshStandardMaterial({ color: '#ffffff', roughness: 0.3, emissive: '#ffffff', emissiveIntensity: 0.2 })
+const stemMat = new MeshStandardMaterial({ color: '#5a3a1a', roughness: 0.8 })
+const BAND = new TorusGeometry(1.0, 0.07, 8, 40)
+const BALL = new SphereGeometry(1, 28, 18)
+
+/** Watermelon rind stripes (on the pendulum heads of Watermelon Swing). */
+let melonMat = null
+function melonMaterial() {
+  if (melonMat) return melonMat
+  const c = document.createElement('canvas')
+  c.width = 256
+  c.height = 64
+  const g = c.getContext('2d')
+  g.fillStyle = '#3fbf3a'
+  g.fillRect(0, 0, 256, 64)
+  g.fillStyle = '#1f7a22'
+  for (let i = 0; i < 12; i += 1) {
+    g.beginPath()
+    const x = i * 21.3
+    g.moveTo(x, 0)
+    g.bezierCurveTo(x + 8, 20, x - 6, 40, x + 6, 64)
+    g.lineTo(x + 13, 64)
+    g.bezierCurveTo(x + 1, 40, x + 15, 20, x + 7, 0)
+    g.fill()
+  }
+  const tex = new CanvasTexture(c)
+  tex.colorSpace = SRGBColorSpace
+  melonMat = new MeshStandardMaterial({ map: tex, roughness: 0.4 })
+  return melonMat
+}
 const warnMat = new MeshBasicMaterial({ color: '#ff2a2a', transparent: true, opacity: 0.7, depthWrite: false, toneMapped: false })
 const bridgeTimber = new MeshStandardMaterial({ color: '#ffffff', roughness: 0.86 })
 
@@ -174,16 +210,26 @@ function Pendulum({ d }) {
   useFrame(() => {
     if (ref.current) ref.current.rotation.z = pendAngle(d, worldTime())
   })
+  const melon = d.look === 'melon'
   return (
     <group position={[d.x, d.y, d.z]}>
       <mesh geometry={BOX} material={dark} scale={[14, 0.6, 0.8]} />
       <group ref={ref}>
         <mesh geometry={CYL} material={rope} position={[0, -d.len / 2, 0]} scale={[0.08, d.len, 0.08]} />
-        <mesh geometry={SPHERE} material={metal} position={[0, -d.len, 0]} scale={d.r} castShadow />
-        {[0, 1, 2, 3, 4, 5].map((i) => {
-          const a = (i / 6) * Math.PI * 2
-          return <mesh key={i} geometry={SPIKE} material={metal} position={[Math.cos(a) * d.r, -d.len, Math.sin(a) * d.r]} rotation={[Math.sin(a) * 1.57, 0, -Math.cos(a) * 1.57]} />
-        })}
+        {melon ? (
+          <group position={[0, -d.len, 0]}>
+            <mesh geometry={SPHERE} material={melonMaterial()} rotation={[0, 0, Math.PI / 2]} scale={[d.r * 1.15, d.r, d.r]} castShadow />
+            <mesh geometry={CYL} material={stemMat} position={[0, d.r + 0.1, 0]} scale={[0.1, 0.3, 0.1]} />
+          </group>
+        ) : (
+          <>
+            <mesh geometry={SPHERE} material={metal} position={[0, -d.len, 0]} scale={d.r} castShadow />
+            {[0, 1, 2, 3, 4, 5].map((i) => {
+              const a = (i / 6) * Math.PI * 2
+              return <mesh key={i} geometry={SPIKE} material={metal} position={[Math.cos(a) * d.r, -d.len, Math.sin(a) * d.r]} rotation={[Math.sin(a) * 1.57, 0, -Math.cos(a) * 1.57]} />
+            })}
+          </>
+        )}
       </group>
     </group>
   )
@@ -206,8 +252,16 @@ function Disk({ d }) {
   )
 }
 
-function Boulders({ items }) {
+/** Rolling things: rocks, coconuts, snowballs, or giant bowling balls (with a band so you see them roll). */
+function Boulders({ items, look }) {
   const ref = useRef()
+  const band = useRef()
+  const ball = look === 'ball'
+  useLayoutEffect(() => {
+    if (!ball || !ref.current) return
+    items.forEach((d, i) => ref.current.setColorAt(i, new Color(d.c || '#3f7bff')))
+    ref.current.instanceColor.needsUpdate = true
+  }, [items, ball])
   useFrame(() => {
     const mesh = ref.current
     if (!mesh) return
@@ -219,14 +273,28 @@ function Boulders({ items }) {
       dummy.scale.setScalar(d.r * Math.max(0.001, b.scale))
       dummy.updateMatrix()
       mesh.setMatrixAt(i, dummy.matrix)
+      if (band.current) {
+        dummy.rotation.set(b.roll, Math.PI / 2, 0)
+        dummy.updateMatrix()
+        band.current.setMatrixAt(i, dummy.matrix)
+      }
     })
     mesh.instanceMatrix.needsUpdate = true
+    if (band.current) band.current.instanceMatrix.needsUpdate = true
     dummy.rotation.set(0, 0, 0)
   })
-  return <instancedMesh ref={ref} args={[BOULDER, rock, items.length]} castShadow frustumCulled={false} />
+  const geo = look === 'ball' || look === 'snow' ? BALL : BOULDER
+  const mat = look === 'ball' ? ballMat : look === 'snow' ? snowMat : look === 'coconut' ? coconutMat : rock
+  return (
+    <>
+      <instancedMesh ref={ref} args={[geo, mat, items.length]} castShadow frustumCulled={false} />
+      {ball && <instancedMesh ref={band} args={[BAND, bandMat, items.length]} frustumCulled={false} />}
+    </>
+  )
 }
 
 function Meteors({ items }) {
+  const coconut = items[0]?.look === 'coconut'
   const rings = useRef()
   const rocks = useRef()
   const blasts = useRef()
@@ -254,7 +322,7 @@ function Meteors({ items }) {
       const bl = (f - METEOR_HIT[0]) / 0.14
       dummy.rotation.set(0, 0, 0)
       dummy.position.set(d.x, d.floor, d.z)
-      dummy.scale.setScalar(bl > 0 && bl < 1 ? d.r * (0.5 + bl) : 0)
+      dummy.scale.setScalar(bl > 0 && bl < 1 ? d.r * (coconut ? 0.25 + bl * 0.35 : 0.5 + bl) : 0)
       dummy.updateMatrix()
       blasts.current.setMatrixAt(i, dummy.matrix)
     })
@@ -263,8 +331,8 @@ function Meteors({ items }) {
   return (
     <>
       <instancedMesh ref={rings} args={[RING, warnMat, items.length]} frustumCulled={false} />
-      <instancedMesh ref={rocks} args={[BOULDER, meteorMat, items.length]} frustumCulled={false} />
-      <instancedMesh ref={blasts} args={[SPHERE, additiveMaterial('#ff7a1a', 0.55), items.length]} frustumCulled={false} />
+      <instancedMesh ref={rocks} args={[BOULDER, coconut ? coconutMat : meteorMat, items.length]} frustumCulled={false} />
+      <instancedMesh ref={blasts} args={[SPHERE, additiveMaterial(coconut ? '#c8955a' : '#ff7a1a', coconut ? 0.35 : 0.55), items.length]} frustumCulled={false} />
     </>
   )
 }
@@ -385,7 +453,16 @@ export const StageDynamics = memo(function StageDynamics({ stage }) {
     }
     return [...groups.values()]
   }, [S])
-  const boulders = useMemo(() => S.dyn.filter((d) => d.t === 'boulder'), [S])
+  const boulderGroups = useMemo(() => {
+    const groups = new Map()
+    for (const d of S.dyn) {
+      if (d.t !== 'boulder') continue
+      const look = d.look || 'rock'
+      if (!groups.has(look)) groups.set(look, [])
+      groups.get(look).push(d)
+    }
+    return [...groups.entries()]
+  }, [S])
   const meteors = useMemo(() => S.dyn.filter((d) => d.t === 'meteor'), [S])
   const bridges = useMemo(() => S.dyn.filter((d) => d.bridgeDeck), [S])
   return (
@@ -402,7 +479,9 @@ export const StageDynamics = memo(function StageDynamics({ stage }) {
         if (d.t === 'wind') return <Wind key={d.id} d={d} />
         return null
       })}
-      {boulders.length > 0 && <Boulders items={boulders} />}
+      {boulderGroups.map(([look, items]) => (
+        <Boulders key={look} look={look} items={items} />
+      ))}
       {meteors.length > 0 && <Meteors items={meteors} />}
       {S.wave && <Wave S={S} />}
       {S.rise && <RisingLava S={S} />}

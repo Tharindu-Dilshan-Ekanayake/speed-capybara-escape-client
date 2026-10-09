@@ -9,6 +9,7 @@ import HUD, { invite, PANEL_SHORTCUTS } from './ui/HUD'
 import LoadingScreen from './ui/LoadingScreen'
 import Panels from './ui/Panels'
 import TouchControls from './ui/TouchControls'
+import DevPanel from './ui/DevPanel'
 
 /** Keyboard shortcuts - each side button shows its key in its corner. */
 function useHotkeys() {
@@ -107,6 +108,7 @@ function App() {
       {fontsReady && <GameScene />}
       <HUD />
       <Panels />
+      <DevPanel />
       <TouchControls />
       <LoadingScreen />
     </div>

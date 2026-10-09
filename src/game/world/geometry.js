@@ -127,6 +127,47 @@ export function treeGeometries() {
   return { trunk: trunkAll, canopy }
 }
 
+/**
+ * Blocky jungle palm: a stack of slightly offset trunk blocks with coconuts, and seven
+ * drooping fronds made of tilted slabs. Fronds are white so instance colour tints them.
+ */
+export function palmGeometries() {
+  const parts = []
+  const shades = ['#8a5a3c', '#a5703f']
+  const off = [0, 0.06, 0.16, 0.3, 0.48, 0.7]
+  for (let i = 0; i < 6; i += 1) {
+    const g = flat(new BoxGeometry(0.52 - i * 0.03, 0.92, 0.52 - i * 0.03))
+    g.translate(off[i], 0.46 + i * 0.9, 0)
+    parts.push(paint(g, shades[i % 2]))
+  }
+  for (const [x, z] of [[0.5, 0.26], [0.95, -0.18], [0.62, -0.3]]) {
+    const g = flat(new BoxGeometry(0.34, 0.34, 0.34))
+    g.translate(x, 5.2, z)
+    parts.push(paint(g, '#5a3620'))
+  }
+  const trunk = mergeGeometries(parts)
+  trunk.computeVertexNormals()
+
+  const fronds = []
+  for (let k = 0; k < 7; k += 1) {
+    const a = (k / 7) * Math.PI * 2 + 0.3
+    for (let j = 0; j < 3; j += 1) {
+      const g = flat(new BoxGeometry(1.1, 0.14, 0.66 - j * 0.14))
+      g.rotateZ(-(0.12 + j * 0.38))
+      g.translate(0.5 + j * 0.98, -(j * j * 0.3 + j * 0.1), 0)
+      g.rotateY(a)
+      g.translate(0.72, 5.6, 0)
+      fronds.push(paint(g, j === 1 ? '#e6e6e6' : j === 2 ? '#d2d2d2' : '#ffffff'))
+    }
+  }
+  const crown = flat(new BoxGeometry(0.8, 0.4, 0.8))
+  crown.translate(0.72, 5.55, 0)
+  fronds.push(paint(crown, '#cfcfcf'))
+  const canopy = mergeGeometries(fronds)
+  canopy.computeVertexNormals()
+  return { trunk, canopy }
+}
+
 /** Stems (fixed green) and heads (tinted per instance) are separate instanced sets. */
 export function flowerGeometry() {
   const stem = paint(flat(new CylinderGeometry(0.03, 0.03, 0.5, 4)), '#1f9a1f')

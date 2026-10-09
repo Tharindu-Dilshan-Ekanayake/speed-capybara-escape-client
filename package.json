@@ -1,5 +1,5 @@
 {
-  "name": "speed-duck-escape-client",
+  "name": "speed-capybara-escape-client",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "sync-shared": "node ../speed-duck-escape-server/scripts/sync-shared.mjs"
+    "sync-shared": "node ../speed-capybara-escape-server/scripts/sync-shared.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

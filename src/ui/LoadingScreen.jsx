@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { useBloxity } from '../bloxity/BloxityContext'
 import { useGame } from '../state/store'
-import { DuckIcon } from './icons'
+import { CapyIcon } from './icons'
 import './loading.css'
 
 /**
@@ -15,18 +15,23 @@ export function LoadingScreen() {
   const sceneReady = useGame((s) => s.sceneReady)
   const avatarReady = useGame((s) => s.avatarReady)
   const [timedOut, setTimedOut] = useState(false)
+  const [slow, setSlow] = useState(false)
   const [gone, setGone] = useState(false)
 
   useEffect(() => {
     const id = setTimeout(() => setTimedOut(true), 12000)
-    return () => clearTimeout(id)
+    const id2 = setTimeout(() => setSlow(true), 7000)
+    return () => {
+      clearTimeout(id)
+      clearTimeout(id2)
+    }
   }, [])
 
   const connected = net === 'online' || net === 'offline' || net === 'error'
   const steps = [status === 'ready' || status === 'error', sceneReady, connected, avatarReady || timedOut]
   const progress = steps.filter(Boolean).length / steps.length
   const done = sceneReady && connected && (avatarReady || timedOut)
-  const label = !steps[0] ? 'Waking up the ducks…' : !sceneReady ? 'Building the world…' : !connected ? 'Joining a server…' : !steps[3] ? 'Dressing your avatar…' : "Let's go!"
+  const label = !steps[0] ? 'Waking up the capybaras…' : !sceneReady ? 'Building the world…' : !connected ? (slow ? 'Waking up a server - almost there…' : 'Joining a server…') : !steps[3] ? 'Dressing your avatar…' : "Let's go!"
 
   useEffect(() => {
     game.loadingStep(label)
@@ -49,11 +54,11 @@ export function LoadingScreen() {
         <div className="logo">
           <div className="l1">+1 SPEED</div>
           <div className="l2">
-            <span>DUCK</span> ESCAPE
+            <span>CAPYBARA</span> ESCAPE
           </div>
         </div>
         <div className="hero">
-          <DuckIcon size={120} />
+          <CapyIcon size={120} yuzu />
           <div className="shadow" />
         </div>
         <div className="bar">

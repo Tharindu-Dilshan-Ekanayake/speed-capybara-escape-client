@@ -17,6 +17,6 @@ createRoot(document.getElementById('root')).render(
 // Dev-only handle for automated play-testing (stripped from production builds).
 if (import.meta.env.DEV) {
   Promise.all([import('./state/store'), import('./net/net')]).then(([store, net]) => {
-    window.__sde = { runtime: store.runtime, useGame: store.useGame, send: net.send, serverNow: store.serverNow }
+    window.__sce = { runtime: store.runtime, useGame: store.useGame, send: net.send, serverNow: store.serverNow }
   })
 }

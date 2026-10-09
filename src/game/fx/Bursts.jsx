@@ -10,7 +10,7 @@ import { shapeTexture } from '../textures'
  * Points draw call for all particles.
  */
 
-const N = 420
+const N = 1000
 
 const mat = new ShaderMaterial({
   uniforms: { uMap: { value: shapeTexture('star') } },
@@ -35,6 +35,7 @@ const PRESET = {
   coins: { n: 50, colors: ['#ffd23a', '#fff6b0', '#ff9a1a'], speed: 6, up: 9, life: 1.3, size: 0.6, gravity: 14 },
   dust: { n: 14, colors: ['#ffffff', '#e8e2d0'], speed: 3, up: 1, life: 0.5, size: 0.7, gravity: 0 },
   poof: { n: 40, colors: ['#ffffff'], speed: 6, up: 3, life: 0.8, size: 0.7, gravity: 2 },
+  rain: { n: 380, colors: ['#ffd23a', '#ffc21a', '#ffb01a', '#ffe066'], speed: 0, up: 0, life: 2.4, size: 0.85, gravity: 0, rain: true },
   rebirth: { n: 120, colors: ['#ff3a3a', '#ffe14a', '#3dff5a', '#29c8ff', '#c23dff'], speed: 10, up: 8, life: 1.8, size: 0.7, gravity: 3 },
 }
 
@@ -66,6 +67,25 @@ export function Bursts() {
         state.next = (state.next + 1) % N
         const a = Math.random() * Math.PI * 2
         const sp = pr.speed * (0.4 + Math.random() * 0.6)
+        if (pr.rain) {
+          // A shower of gold falling around the player from different heights.
+          const rr = Math.sqrt(Math.random()) * 9
+          p.life = pr.life * (0.7 + Math.random() * 0.3)
+          p.max = p.life
+          p.x = x + Math.cos(a) * rr
+          p.z = z + Math.sin(a) * rr
+          p.y = y + 3 + Math.random() * 14
+          p.vx = (Math.random() - 0.5) * 0.8
+          p.vz = (Math.random() - 0.5) * 0.8
+          p.vy = -7 - Math.random() * 4
+          p.g = 0
+          p.size = pr.size * (0.6 + Math.random() * 0.7)
+          tmp.set(pr.colors[i % pr.colors.length])
+          p.r = tmp.r
+          p.gg = tmp.g
+          p.b = tmp.b
+          continue
+        }
         p.life = pr.life * (0.6 + Math.random() * 0.4)
         p.max = p.life
         p.x = x

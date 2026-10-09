@@ -57,7 +57,9 @@ export function boulderState(d, T) {
   // Grow in at the cave mouth, shrink out at the far end.
   const scale = Math.min(1, f / 0.04, (1 - f) / 0.04)
   const speed = (d.zB - d.zA) / d.per
-  return { x: d.x, y: d.floor + d.r, z, scale, roll: (z / d.r) % TAU, speed }
+  // Balls rolling down a ramp follow a sloped floor (floor -> floorB).
+  const floor = d.floorB === undefined ? d.floor : d.floor + (d.floorB - d.floor) * f
+  return { x: d.x, y: floor + d.r, z, scale, roll: (z / d.r) % TAU, speed }
 }
 
 /** Meteor cycle: 0..0.78 warning circle grows, 0.78..0.86 impact, then embers. */
